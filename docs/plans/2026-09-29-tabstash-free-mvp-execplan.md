@@ -16,13 +16,13 @@ Tabstash 当前只有产品文档，没有可运行的扩展。完成本计划�
 - [x] (2026-09-29 23:39 +08:00) 初始化 Git 仓库，关联 Gitee，并推送文档基线。
 - [x] (2026-09-29 23:39 +08:00) 安装 `AGENTS.md` 与 `.agent/PLANS.md` 的 ExecPlan 契约。
 - [x] (2026-09-29 23:39 +08:00) 创建本 ExecPlan；实现代码尚未开始。
-- [ ] 完成项目脚手架、Manifest V3 配置和可加载的最小扩展。
-- [ ] 完成版本化本地存储、会话采集、保存、重命名、删除和五个会话上限。
+- [x] (2026-09-30 01:31 +08:00) 完成项目脚手架、Manifest V3 配置和可加载的最小扩展；构建输出包含 `manifest.json`、popup、options 和 service worker。
+- [x] (2026-09-30 03:20 +08:00) 完成版本化本地存储、会话采集、保存、预览确认、重命名、删除和五个会话上限；自动验证为 7 个测试文件、36 个测试通过，M2 三道中文评审全部通过。
 - [ ] 完成单窗口/多窗口恢复、合并恢复、部分失败反馈和后台任务状态。
 - [ ] 完成弹窗 UI、搜索、主机名分组和快捷键。
 - [ ] 完成 JSON 导出、导入预览、校验和全量拒绝策略。
 - [ ] 更新 README 使其与免费版边界一致，并补充发布前隐私与权限说明。
-- [ ] 在每个实现里程碑后完成三道中文评审门并记录结论。
+- [x] (2026-09-30 03:20 +08:00) 已完成并记录 M1、M2 的三道中文评审门；后续 M3-M6 仍需在各自实现边界复审。
 - [ ] 运行单元测试、构建检查和真实 Chrome 手工验收；形成最终 Outcomes & Retrospective。
 
 ## Surprises & Discoveries
@@ -35,6 +35,14 @@ Tabstash 当前只有产品文档，没有可运行的扩展。完成本计划�
   Evidence: PowerShell 启动 Node 服务器后可以生成本地讨论页；`.superpowers` 已被 `.gitignore` 排除。后续实现不依赖该工具。
 - Observation: Chrome Manifest V3 service worker 可能在恢复长会话过程中被浏览器中断。
   Evidence: 设计决定不自动续传或重试；需要保存任务状态并在下次打开弹窗时显示“结果未确认”，避免重复打开标签。
+- Observation: `@types/chrome` 要求 `windows.getAll` 的 `windowTypes` 使用字面量枚举，而采集模块为了测试使用更宽的字符串数组。
+  Evidence: 首次类型检查拒绝 `string[]` 传给 Chrome API；后台适配层现在只在 API 边界做窄化转换，采集与测试接口保持浏览器无关。
+- Observation: service worker 的消息监听需要返回 `true` 才能在异步处理完成后调用 `sendResponse`。
+  Evidence: `src/background/background.ts` 在识别业务消息后返回 `true`，同步 ping 仍立即响应。
+- Observation: `chrome.storage.session` 可用于保存短期预览确认数据，不需要新增 Manifest 权限；仅使用内存缓存会在 service worker 重启后丢失确认上下文。
+  Evidence: `SessionPreviewCache` 使用带 TTL 的 session storage 记录，并有重启实例、并发 claim 和失败释放测试。
+- Observation: 预览确认必须防止重放，而不能只依靠 popup 内存保存快照。
+  Evidence: 客户端消息不再接受 `capture` 字段；后台只接受绑定保存范围的 token，成功保存后消费，明确存储失败才 release。
 
 ## Decision Log
 
@@ -62,14 +70,23 @@ Tabstash 当前只有产品文档，没有可运行的扩展。完成本计划�
 - Decision: 不使用 `chrome.storage.sync`，不申请主机权限和内容脚本权限。
   Rationale: 免费版不做跨设备同步，减少权限、隐私和商店审核范围。
   Date/Author: 2026-09-29 / Codex 设计。
+- Decision: 将消息处理拆为纯 `handleMessage` 与 service worker 适配两层，并让 `SessionStore` 继续承担写队列。
+  Rationale: 纯处理器可以在不启动 Chrome 的情况下验证保存、列表、重命名、删除和错误响应；单一存储队列覆盖所有写命令，避免后台事件监听器各自实现并发控制。
+  Date/Author: 2026-09-30 / Codex。
+- Decision: 保存混合标签时采用后台预览令牌确认；令牌存入 `chrome.storage.session`，5 分钟过期，最多保留 20 条，成功保存后消费。
+  Rationale: 先展示排除项再写入，避免客户端伪造 URL 或统计；session storage 跨 service worker 重启保留短期确认上下文；claim 后不自动重放，避免一次确认产生重复会话。
+  Date/Author: 2026-09-30 / Codex。
+- Decision: 存储状态严格要求 UUID v4、规范化 UTC ISO 时间戳和至少一个可恢复标签；列表读取等待已排队写操作。
+  Rationale: 让状态不变量在写入前和读取时都成立，避免损坏数据进入后续列表、重命名或删除路径；读写顺序对 popup 提供可预测结果。
+  Date/Author: 2026-09-30 / Codex。
 
 ## Outcomes & Retrospective
 
-当前还没有实现结果。本计划完成后，在这里记录已交付的用户行为、通过的测试、未解决的浏览器限制和下一版 Pro 的明确入口。若某个验收项因 Chrome 平台限制无法完全保证，必须说明实际行为和文案边界，而不是用“完成”替代证据。
+M1/M2 的代码结果已经形成：Manifest V3 工程可构建，版本化本地状态、窗口采集和后台保存/预览确认/列表/重命名/删除消息处理已实现。`npm test -- --run` 当前为 7 个测试文件、36 个测试通过，`npm run typecheck`、`npm run build` 和 `git diff --check` 通过。真实 Chrome 加载和完整用户流程仍属于后续 M3/M6 验收，不能由本地构建替代；此前 Chrome 自动化产生的两个隔离 profile 目录已清理，未进入 Git。
 
 ## Context and Orientation
 
-仓库根目录是 `F:\tabstash`。目前已有 `README.md`、中文设计文档 `docs/design/2026-09-29-free-mvp.zh-CN.md`、交接记录 `docs/handoffs/2026-09-29-2350-tabstash-free-mvp.md` 和 Git 忽略规则。此时没有 `package.json`、`src`、`manifest.json` 或测试代码，因此第一里程碑必须创建完整的 Chrome Manifest V3 React/TypeScript 工程。
+仓库根目录是 `F:\tabstash`。当前已有 `README.md`、中文设计文档 `docs/design/2026-09-29-free-mvp.zh-CN.md`、交接记录、Manifest V3 工程、`src`、`tests` 和 Git 忽略规则。M1 已创建可构建骨架，M2 已完成后台存储与会话命令；后续工作从 `src/popup` 的真实交互、恢复、备份和发布验收继续。
 
 Manifest V3 是 Chrome 扩展当前使用的配置格式；它用一个后台 service worker 处理扩展事件，但这个后台脚本会被浏览器按需启动和停止。弹窗是用户点击扩展图标后打开的 React 页面，适合展示表单和列表，但关闭后不应承担长任务。Chrome API 是扩展访问窗口、标签页、命令和存储的接口集合，必须由后台模块集中调用，避免 UI 和后台各自修改数据。
 
@@ -91,13 +108,29 @@ Manifest V3 是 Chrome 扩展当前使用的配置格式；它用一个后台 se
 
 ### Milestone 2: 实现版本化本地存储与会话命令
 
-在 `src/types/session.ts` 定义 `StoredState`、`SavedSession`、`SavedWindow`、`SavedTab` 和保存范围、恢复模式、任务状态等联合类型。在 `src/lib/storage.ts` 实现默认空状态、读取校验、schema 版本检查、单键写入、五个会话上限和存储错误映射。写入必须从最新状态生成候选对象，只有 `chrome.storage.local.set` 成功后才向调用方返回成功；失败时旧状态保持可读。
+在 `src/types/session.ts` 定义 `StoredState`、`SavedSession`、`SavedWindow`、`SavedTab` 和保存范围、恢复模式、任务状态等联合类型。在 `src/lib/storage.ts` 实现默认空状态、读取校验、schema 版本检查、UUID/ISO/非空标签不变量、单键写入、五个会话上限和存储错误映射。写入必须从最新状态生成候选对象，只有 `chrome.storage.local.set` 成功后才向调用方返回成功；失败时旧状态保持可读。
 
-在 `src/lib/url.ts` 实现可恢复网址判断和安全主机名提取。在 `src/lib/session-capture.ts` 实现从当前窗口或所有普通窗口读取标签并转成 `SavedSession`，过滤隐身窗口、扩展页面、开发者工具和非 `http/https` URL，同时返回被过滤标签及原因。在 `src/background/messages.ts` 定义 popup 与后台之间的消息类型；在 `src/background/background.ts` 处理读取、保存、重命名、删除和列表查询。所有写命令通过一个后台队列串行化，避免并发保存和重命名互相覆盖。
+在 `src/lib/url.ts` 实现可恢复网址判断和安全主机名提取。在 `src/lib/session-capture.ts` 实现从当前窗口或所有普通窗口读取标签并转成 `SavedSession`，过滤隐身窗口、扩展页面、开发者工具和非 `http/https` URL，同时返回被过滤标签及原因。在 `src/background/messages.ts` 定义 popup 与后台之间的消息类型；在 `src/background/background.ts` 和 `src/background/listener.ts` 处理读取、保存、预览确认、重命名、删除和列表查询。混合标签保存先返回后台生成的预览令牌，确认消息不能携带客户端快照；预览令牌放入 `chrome.storage.session`，并由 claim/release/complete 维护重放和失败恢复。所有写命令通过后台队列串行化，列表读取等待已排队写入完成，避免并发保存和重命名互相覆盖。
 
 为 `src/lib/storage.test.ts`、`src/lib/url.test.ts`、`src/lib/session-capture.test.ts` 和消息处理测试提供 Chrome API 的最小 mock。测试空状态、五个会话边界、重复 ID、无效数据、配额失败、并发写入、当前窗口/所有窗口采集、过滤协议和标题/URL 保留。运行 `npm test -- --run` 和 `npm run typecheck`；预期纯逻辑测试全部通过，且不会需要真实浏览器。
 
-里程碑验收是：清空扩展数据后保存一个会话，重新打开扩展仍能看到它；连续保存第六个会话时不改变前五个并显示“最多保存 5 个会话”；重命名和删除只改变目标会话；写入 mock 失败时 UI 不显示成功。完成后执行三道中文评审门，分别攻击并核对存储一致性、设计边界和权限/性能影响，并把结论写入本计划。
+里程碑验收是：后台测试能证明空状态、严格状态校验、窗口和 URL 过滤、预览确认、令牌跨 service worker 实例、并发 claim、写入失败释放、五个会话上限、重命名和删除均符合契约；popup 的真实列表展示和写入失败 UI 反馈留在 M3。完成后执行三道中文评审门，分别攻击并核对存储一致性、设计边界和权限/性能影响，并把结论写入本计划。
+
+M1 评审记录（最终以修正后的骨架为准）：
+
+    评审时间：2026-09-30 03:20 +08:00
+    Gate 1 逻辑反方/辩论：通过。早期快捷键命令曾绕过名称和范围确认，已移除并保留最小 ping；当前 service worker 仅处理明确消息，构建和测试入口可复现。
+    Gate 2 设计一致性 review：通过。Manifest V3、popup、options、service worker 边界与免费版方向一致，没有账号、网络、云同步或提前实现 Pro 的代码；真实 Chrome 加载证据仍留到发布验收。
+    Gate 3 影响面与性能 review：通过。权限仅 `storage`、`tabs`，后台 bundle 不引入 React，不读取窗口或启动轮询；初始构建警告仅为 Tailwind 未发现 utility class，不影响构建。
+    评审证据：`npm run typecheck`、`npm test -- --run`、`npm run build` 通过；`dist/manifest.json` 生成且权限最小化；命令行加载扩展在当前 Chrome 环境被忽略，未将其误记为真实 Chrome 通过。
+
+M2 评审记录：
+
+    评审时间：2026-09-30 03:20 +08:00
+    Gate 1 逻辑反方/辩论：通过。后台 token 缓存跨实例串行 claim；客户端不能注入 capture；claim 成功后不重放，明确存储失败才 release；空预览、名称错误、重复 ID、写入失败和 listener 异步响应均有测试。service worker 在 claim 后中断时要求用户重新预览，刻意避免自动重复保存。
+    Gate 2 设计一致性 review：通过。状态严格校验 UUID v4、规范 UTC ISO 时间戳、至少一个 HTTP(S) 标签和五会话上限；当前/全部普通窗口与隐身、非普通窗口过滤符合设计；仅使用 `storage`、`tabs`，没有 Pro 范围漂移。popup UI、README 和真实 Chrome E2E 按 M3/M6 处理，不冒充本里程碑完成。
+    Gate 3 影响面与性能 review：通过（存在非阻断风险）。后台 bundle 约 10.25 KB，gzip 约 3.60 KB；采集 120 标签为单次 Chrome API 读取和线性遍历；预览最多 20 条、TTL 5 分钟；5 个会话的完整状态重写属于已知免费版规模约束，极端长 URL/title 和旧 Chrome 不支持 `storage.session` 属后续发布检查。
+    评审证据：`npm test -- --run` 输出 7 个测试文件、36/36 通过；`npm run typecheck`、`npm run build`、`git diff --check` 通过；`dist/manifest.json` 仅含 `storage,tabs`。
 
 ### Milestone 3: 实现保存表单、会话列表和管理体验
 
@@ -235,3 +268,4 @@ Manifest V3 是 Chrome 扩展当前使用的配置格式；它用一个后台 se
 ## Revision Note
 
 2026-09-29 23:39 +08:00：首次创建本 ExecPlan。根据已确认的免费版设计，将空仓库的脚手架、版本化本地存储、多窗口保存/恢复、弹窗管理、JSON 备份/导入、文档同步和 Chrome 真实验收拆为六个可独立验证的里程碑，并加入仓库要求的中文三道评审门。后续每次修改必须同步更新 `Progress`、`Surprises & Discoveries`、`Decision Log` 和本节。
+2026-09-30 03:20 +08:00：完成 M1/M2 实现并通过最终三道中文 Gate。根据评审将混合标签保存改为后台预览令牌确认，令牌使用 `chrome.storage.session` 跨 service worker 保留；补充严格 UUID/ISO/非空标签校验、读写顺序、listener 契约、并发 claim、失败释放和容量边界测试。M2 的真实 popup UI、README 同步和 Chrome E2E 仍按后续里程碑执行。

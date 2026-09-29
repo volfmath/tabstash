@@ -13,15 +13,6 @@
     "service_worker": "src/background/background.ts",
     "type": "module"
   },
-  "commands": {
-    "save-session": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+S",
-        "mac": "MacCtrl+Shift+S"
-      },
-      "description": "打开 Tabstash 保存入口"
-    }
-  },
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",

@@ -1,11 +1,5 @@
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.type === 'tabstash:ping') {
-    sendResponse({ type: 'tabstash:pong', ok: true })
-  }
-})
+import { createBackgroundDependencies } from './handler'
+import { registerMessageListener } from './listener'
 
-chrome.commands.onCommand.addListener((command) => {
-  if (command === 'save-session') {
-    void chrome.tabs.create({ url: chrome.runtime.getURL('src/popup/index.html') })
-  }
-})
+const dependencies = createBackgroundDependencies()
+registerMessageListener(chrome.runtime, dependencies)
