@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-保存/管理/搜索、双恢复模式、恢复任务反馈、JSON 导出导入和快捷键兜底均已实现。最新三道独立代码 Gate 均通过，结论与风险已记录在 `docs/plans/2026-09-29-tabstash-free-mvp-execplan.md`。本轮准备把工作树作为候选实现提交推送；是否已推送以 `git log -1`、`git status --short` 和 `git ls-remote origin refs/heads/main` 为准。
+保存/管理/搜索、双恢复模式、恢复任务反馈、JSON 导出导入和快捷键兜底均已实现。最新三道独立代码 Gate 均通过，结论与风险已记录在 `docs/plans/2026-09-29-tabstash-free-mvp-execplan.md`。候选代码提交 `17b4076 feat: complete local free MVP candidate` 已推送 Gitee `origin/main`，推送后核对远端提交号一致；后续文档记录可能有新提交，以 `git log -1`、`git status --short` 和 `git ls-remote origin refs/heads/main` 为准。
 
 真实 Chrome 发布验收尚未完成，M6 不得勾选完成。中文清单为 `docs/verification/2026-09-30-free-mvp-checklist.zh-CN.md`。
 
