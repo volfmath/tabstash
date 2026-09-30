@@ -3,7 +3,7 @@ import { Blob as NodeBlob } from 'node:buffer'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { expect, it, vi } from 'vitest'
-import Options from '../src/options/Options'
+import Backup from '../src/options/Backup'
 
 it('exports a compact backup that stays importable when indentation would exceed 32 MB', async () => {
   const backup = {
@@ -27,7 +27,7 @@ it('exports a compact backup that stays importable when indentation would exceed
   })
   const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
   try {
-    await act(async () => root.render(<Options />))
+    await act(async () => root.render(<Backup />))
     const button = Array.from(container.querySelectorAll('button')).find((item) => item.textContent === '导出备份')!
     await act(async () => button.click())
     expect(downloaded).toBeDefined()

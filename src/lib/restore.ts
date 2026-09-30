@@ -8,6 +8,7 @@ export interface RestoreFailure {
   url: string
   title: string
   message: string
+  code?: 'unsupported-url' | 'browser-open-failed' | 'window-create-failed'
 }
 
 export interface RestoreWindowPlan {
@@ -83,7 +84,7 @@ export function createRestorePlan(
   const mappedWindows = sourceWindows.map((window) => ({
     tabs: window.tabs.filter((tab) => {
       if (isRestorableUrl(tab.url)) return true
-      invalidTabs.push({ url: tab.url, title: tab.title, message: '网址协议不支持' })
+      invalidTabs.push({ url: tab.url, title: tab.title, message: '网址协议不支持', code: 'unsupported-url' })
       return false
     }),
   }))
@@ -132,7 +133,7 @@ export async function executeRestorePlan(
         if (createdWindow.id === undefined) throw new Error('浏览器没有返回新窗口 ID')
         task.createdWindowCount += 1
       } catch (error) {
-        failures.push({ url: '', title: '空窗口', message: toErrorMessage(error) })
+        failures.push({ url: '', title: '空窗口', message: toErrorMessage(error), code: 'window-create-failed' })
       }
       continue
     }
@@ -200,6 +201,7 @@ function toFailure(tab: SavedTab, error: unknown): RestoreFailure {
     url: tab.url,
     title: tab.title,
     message: toErrorMessage(error, '浏览器无法打开此标签页'),
+    code: 'browser-open-failed',
   }
 }
 

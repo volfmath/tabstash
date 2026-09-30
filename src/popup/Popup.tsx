@@ -5,6 +5,10 @@ import type { CapturedSession } from '../lib/session-capture'
 import type { RestoreTask } from '../lib/restore'
 import type { RestoreMode, SavedSession, SaveScope } from '../types/session'
 import type { BackgroundMessage, BackgroundResponse } from '../background/messages'
+import { ArrowLeft, ArrowUpRight, Check, Download, FolderOpen, Pencil, RefreshCw, Search, ShieldCheck, Trash2, X } from 'lucide-react'
+import { useI18n, useLocalizedMessage } from '../i18n/react'
+import { ui } from '../i18n/ui'
+import { localizeFailure, localizeRestoreFailure, LocalizedFailure } from '../i18n/errors'
 
 interface PendingSave {
   name: string
@@ -19,6 +23,7 @@ interface SessionItemProps {
   onDelete: (id: string) => Promise<void>
   onRestore: (session: SavedSession) => void
   restoreBusy: boolean
+  compact: boolean
 }
 
 function sendBackground(message: BackgroundMessage): Promise<BackgroundResponse> {
@@ -33,8 +38,8 @@ function countTabs(session: SavedSession): number {
   return session.windows.reduce((total, window) => total + window.tabs.length, 0)
 }
 
-function formatCreatedAt(value: string): string {
-  return new Intl.DateTimeFormat('zh-CN', {
+function formatCreatedAt(value: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -42,23 +47,14 @@ function formatCreatedAt(value: string): string {
   }).format(new Date(value))
 }
 
-function exclusionLabel(reason: string): string {
-  switch (reason) {
-    case 'unsupported-window':
-      return '窗口类型不支持'
-    case 'missing-url':
-      return '缺少网址'
-    default:
-      return '网址协议不支持'
-  }
-}
-
-function SessionItem({ session, onRename, onDelete, onRestore, restoreBusy }: SessionItemProps) {
+function SessionItem({ session, onRename, onDelete, onRestore, restoreBusy, compact }: SessionItemProps) {
+  const { locale } = useI18n()
+  const t = ui(locale)
   const [editing, setEditing] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [name, setName] = useState(session.name)
   const [busy, setBusy] = useState(false)
-  const [actionError, setActionError] = useState('')
+  const [actionError, setActionError] = useLocalizedMessage()
 
   useEffect(() => {
     setName(session.name)
@@ -78,20 +74,20 @@ function SessionItem({ session, onRename, onDelete, onRestore, restoreBusy }: Se
       await onRename(session.id, name)
       setEditing(false)
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : '重命名失败')
+      setActionError((locale) => error instanceof LocalizedFailure ? localizeFailure(error.failure, locale) : ui(locale)('renameFailed'))
     } finally {
       setBusy(false)
     }
   }
 
   async function deleteSession() {
-    if (!window.confirm(`确定删除“${session.name}”吗？`)) return
+    if (!window.confirm(t('deleteConfirm', { name: session.name }))) return
     setBusy(true)
     setActionError('')
     try {
       await onDelete(session.id)
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : '删除失败')
+      setActionError((locale) => error instanceof LocalizedFailure ? localizeFailure(error.failure, locale) : ui(locale)('deleteFailed'))
     } finally {
       setBusy(false)
     }
@@ -103,49 +99,50 @@ function SessionItem({ session, onRename, onDelete, onRestore, restoreBusy }: Se
         {editing ? (
           <form className="rename-form" onSubmit={submitRename}>
             <input
-              aria-label="会话名称"
+              aria-label={t('sessionName')}
               value={name}
               onChange={(event) => setName(event.target.value)}
               disabled={busy}
               autoFocus
             />
             <button type="submit" disabled={busy || !name.trim()}>
-              保存
+              {t('save')}
             </button>
             <button type="button" onClick={() => { setEditing(false); setName(session.name); setActionError('') }} disabled={busy}>
-              取消
+              {t('cancel')}
             </button>
           </form>
         ) : (
-          <h3>{session.name}</h3>
+          <div className="session-title"><FolderOpen size={18} aria-hidden="true" /><h3 title={session.name}>{session.name}</h3></div>
         )}
         {!editing && (
           <div className="session-actions">
-            <button type="button" onClick={() => onRestore(session)} disabled={busy || restoreBusy} title="恢复会话">
-              恢复
+            <button className="restore-button" type="button" onClick={() => onRestore(session)} disabled={busy || restoreBusy} title={t('restoreLabel')}>
+              <ArrowUpRight size={15} aria-hidden="true" />{t('restore')}
             </button>
-            <button type="button" onClick={() => { setActionError(''); setEditing(true) }} disabled={busy} title="重命名会话">
-              重命名
+            {!compact && <button className="icon-button" type="button" onClick={() => { setActionError(''); setEditing(true) }} disabled={busy} title={t('rename')} aria-label={t('rename')}>
+              <Pencil size={16} aria-hidden="true" />
             </button>
-            <button type="button" onClick={deleteSession} disabled={busy} title="删除会话">
-              删除
-            </button>
+            }
+            {!compact && <button className="icon-button danger" type="button" onClick={deleteSession} disabled={busy} title={t('delete')} aria-label={t('delete')}>
+              <Trash2 size={16} aria-hidden="true" />
+            </button>}
           </div>
         )}
       </div>
       <p className="session-meta">
-        {session.windows.length} 个窗口 · {countTabs(session)} 个标签 · {formatCreatedAt(session.createdAt)}
+        {t('sessionMeta', { windows: session.windows.length, tabs: countTabs(session) })}<span className="meta-separator"> · </span><time dateTime={session.createdAt}>{formatCreatedAt(session.createdAt, locale)}</time>
       </p>
       {actionError && <p className="warning" role="status">{actionError}</p>}
-      <details className="session-details" onToggle={(event) => setDetailsOpen(event.currentTarget.open)}>
-        <summary>查看标签</summary>
+      {!compact && <details className="session-details" onToggle={(event) => setDetailsOpen(event.currentTarget.open)}>
+        <summary>{t('viewTabs')}</summary>
         {detailsOpen && session.windows.map((window, windowIndex) => {
           let previousHost = ''
           return (
             <section className="saved-window" key={`${session.id}-${windowIndex}`}>
-              <h4>窗口 {windowIndex + 1}</h4>
+              <h4>{t('window', { number: windowIndex + 1 })}</h4>
               {window.tabs.length === 0 ? (
-                <p className="muted">空窗口</p>
+                <p className="muted">{t('emptyWindow')}</p>
               ) : (
                 <ul className="saved-tabs">
                   {window.tabs.map((tab, tabIndex) => {
@@ -166,12 +163,15 @@ function SessionItem({ session, onRename, onDelete, onRestore, restoreBusy }: Se
             </section>
           )
         })}
-      </details>
+      </details>}
     </article>
   )
 }
 
-export default function Popup() {
+export default function Popup({ variant = 'popup' }: { variant?: 'popup' | 'manager' }) {
+  const { locale } = useI18n()
+  const t = ui(locale)
+  const compact = variant === 'popup'
   const [sessions, setSessions] = useState<SavedSession[]>([])
   const [query, setQuery] = useState('')
   const [name, setName] = useState('')
@@ -180,8 +180,8 @@ export default function Popup() {
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
   const [listReady, setListReady] = useState(false)
-  const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
+  const [error, setError] = useLocalizedMessage()
+  const [notice, setNotice] = useLocalizedMessage()
   const [restoreTarget, setRestoreTarget] = useState<SavedSession | null>(null)
   const [restoreMode, setRestoreMode] = useState<RestoreMode>('preserve-windows')
   const [restoreTask, setRestoreTask] = useState<RestoreTask | null>(null)
@@ -196,6 +196,11 @@ export default function Popup() {
   useEffect(() => {
     void refreshSessions()
     void refreshRestoreTasks()
+    const onChanged = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+      if (area === 'local' && 'tabstashState' in changes) void refreshSessions()
+    }
+    chrome.storage?.onChanged?.addListener(onChanged)
+    return () => chrome.storage?.onChanged?.removeListener(onChanged)
   }, [])
 
   useEffect(() => {
@@ -216,15 +221,15 @@ export default function Popup() {
           setError('')
           if (response.task.status === 'running') schedulePoll()
         } else if (!response.ok) {
-          setError(`暂时无法读取恢复进度：${response.message}`)
+          setError((locale) => localizeFailure(response, locale))
           schedulePoll()
         } else {
-          setError('暂时无法读取恢复进度：后台返回了无法识别的结果')
+          setError((locale) => ui(locale)('pollError'))
           schedulePoll()
         }
       } catch {
         if (!cancelled) {
-          setError('暂时无法读取恢复进度，正在重试')
+          setError((locale) => ui(locale)('pollError'))
           schedulePoll()
         }
       }
@@ -248,13 +253,13 @@ export default function Popup() {
         setError('')
         setListReady(true)
       } else if (!response.ok) {
-        setError(response.message)
+        setError((locale) => localizeFailure(response, locale))
       } else {
-        setError('后台返回了无法识别的列表结果')
+        setError((locale) => ui(locale)('responseError'))
       }
     } catch {
       if (requestId !== refreshRequest.current || revision !== dataRevision.current) return
-      setError('无法连接到后台服务，请重新打开弹窗')
+      setError((locale) => ui(locale)('connectionError'))
     } finally {
       if (requestId === refreshRequest.current) setLoading(false)
     }
@@ -263,7 +268,7 @@ export default function Popup() {
   async function previewSave(event: FormEvent) {
     event.preventDefault()
     if (!name.trim()) {
-      setError('请输入会话名称')
+      setError((locale) => ui(locale)('enterName'))
       return
     }
     setBusy(true)
@@ -275,13 +280,13 @@ export default function Popup() {
         setNotice('')
         setPending({ name: name.trim(), scope, preview: response.preview, previewToken: response.previewToken })
       } else if (!response.ok) {
-        setError(response.message)
+        setError((locale) => localizeFailure(response, locale))
         if (response.code === 'preview-expired') setPending(null)
       } else {
-        setError('后台返回了无法识别的预览结果')
+        setError((locale) => ui(locale)('responseError'))
       }
     } catch {
-      setError('预览失败，请稍后重试')
+      setError((locale) => ui(locale)('previewFailed'))
     } finally {
       setBusy(false)
     }
@@ -305,15 +310,15 @@ export default function Popup() {
         setSessions((current) => sortSessions([response.session, ...current.filter((item) => item.id !== response.session.id)]))
         setPending(null)
         setName('')
-        setNotice(`已保存“${response.session.name}”`)
+        setNotice((locale) => ui(locale)('saved', { name: response.session.name }))
       } else if (!response.ok) {
-        setError(response.message)
+        setError((locale) => localizeFailure(response, locale))
         if (response.code === 'preview-expired') setPending(null)
       } else {
-        setError('后台返回了无法识别的保存结果')
+        setError((locale) => ui(locale)('responseError'))
       }
     } catch {
-      setError('保存失败，请稍后重试')
+      setError((locale) => ui(locale)('saveFailed'))
     } finally {
       setBusy(false)
     }
@@ -321,20 +326,20 @@ export default function Popup() {
 
   async function renameSession(id: string, nextName: string) {
     const response = await sendBackground({ type: 'rename-session', id, name: nextName })
-    if (!response.ok) throw new Error(response.message)
+    if (!response.ok) throw new LocalizedFailure(response)
     dataRevision.current += 1
     setError('')
     setSessions((current) => current.map((item) => item.id === id ? { ...item, name: nextName.trim() } : item))
-    setNotice('会话名称已更新')
+    setNotice((locale) => ui(locale)('renamed'))
   }
 
   async function deleteSession(id: string) {
     const response = await sendBackground({ type: 'delete-session', id })
-    if (!response.ok) throw new Error(response.message)
+    if (!response.ok) throw new LocalizedFailure(response)
     dataRevision.current += 1
     setError('')
     setSessions((current) => current.filter((item) => item.id !== id))
-    setNotice('会话已删除')
+    setNotice((locale) => ui(locale)('deleted'))
   }
 
   async function refreshRestoreTasks() {
@@ -378,11 +383,11 @@ export default function Popup() {
         restoreAttempt.current = null
         setRestoreTask(response.task)
         setRestoreTarget(null)
-        setNotice('恢复任务已开始，原会话保持不变；再次恢复会再次打开标签')
+        setNotice('')
       } else if (!response.ok) {
-        setError(response.message)
+        setError((locale) => localizeFailure(response, locale))
       } else {
-        setError('后台返回了无法识别的恢复结果')
+        setError((locale) => ui(locale)('responseError'))
       }
     } catch {
       if (requestId === restoreRequest.current) {
@@ -392,12 +397,12 @@ export default function Popup() {
             restoreAttempt.current = null
             setRestoreTask(status.task)
             setRestoreTarget(null)
-            setNotice('恢复任务已开始，原会话保持不变')
+            setNotice('')
           } else {
-            setError('恢复启动结果未知；请先检查浏览器，重复操作可能再次打开标签')
+            setError((locale) => ui(locale)('restoreUnknown'))
           }
         } catch {
-          setError('恢复启动结果未知；请先检查浏览器，重复操作可能再次打开标签')
+          setError((locale) => ui(locale)('restoreUnknown'))
         }
       }
     } finally {
@@ -407,80 +412,78 @@ export default function Popup() {
 
   function restoreStatusLabel(status: RestoreTask['status']): string {
     switch (status) {
-      case 'running': return '恢复中'
-      case 'completed': return '恢复完成'
-      case 'completed-with-errors': return '部分完成'
-      case 'unconfirmed': return '结果未确认'
+      case 'running': return t('running')
+      case 'completed': return t('completed')
+      case 'completed-with-errors': return t('partial')
+      case 'unconfirmed': return t('unconfirmed')
     }
   }
 
   return (
-    <main className="popup-shell">
+    <div className={compact ? 'popup-shell' : 'sessions-workspace'}>
       <header className="app-header">
-        <div>
-          <p className="eyebrow">本地会话</p>
-          <h1>Tabstash</h1>
-          <p className="muted">v{version} · {sessions.length}/5</p>
+        <div className="brand-heading">
+          {compact && <img src="/icon48.png" width="30" height="30" alt="" />}
+          <h1>{compact ? 'Tabstash' : t('sessions')}</h1>
         </div>
-        <button className="text-button" type="button" onClick={() => chrome.runtime.openOptionsPage()}>
-          设置
-        </button>
+        {compact ? <button className="icon-button" type="button" title={t('manager')} aria-label={t('manager')} onClick={() => void chrome.runtime.openOptionsPage()}>
+          <ArrowUpRight size={20} aria-hidden="true" />
+        </button> : <span className="limit-label">{t('count', { count: sessions.length })}</span>}
       </header>
 
-      <section className="save-panel" aria-labelledby="save-heading">
+      <div className="workspace-body">
+      {!pending && !restoreTarget && <section className="save-panel" aria-labelledby="save-heading">
         <div className="section-heading">
-          <div>
-            <p className="eyebrow">保存工作现场</p>
-            <h2 id="save-heading">新建会话</h2>
-          </div>
-          <span className="limit-label">最多 5 个</span>
+          <h2 id="save-heading">{t('saveHeading')}</h2>
         </div>
         <form className="save-form" onSubmit={previewSave}>
           <label>
-            名称
-            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="例如：研究资料" disabled={!listReady || loading || busy || Boolean(pending)} />
+            <span className="visually-hidden">{t('sessionName')}</span>
+            <input value={name} onChange={(event) => setName(event.target.value)} placeholder={t('namePlaceholder')} disabled={!listReady || loading || busy} />
           </label>
           <label>
-            保存范围
-            <select value={scope} onChange={(event) => setScope(event.target.value as SaveScope)} disabled={!listReady || loading || busy || Boolean(pending)}>
-              <option value="current-window">当前窗口</option>
-              <option value="all-windows">所有普通窗口</option>
+            <span className="visually-hidden">{t('scope')}</span>
+            <select value={scope} onChange={(event) => setScope(event.target.value as SaveScope)} disabled={!listReady || loading || busy}>
+              <option value="current-window">{t('currentWindow')}</option>
+              <option value="all-windows">{t('allWindows')}</option>
             </select>
           </label>
-          <button className="primary-button" type="submit" disabled={!listReady || loading || busy || Boolean(pending) || sessions.length >= 5}>
-            {busy ? '读取中…' : '预览并保存'}
+          <button className="primary-button" type="submit" disabled={!listReady || loading || busy || sessions.length >= 5}>
+            <Download size={16} aria-hidden="true" />{busy ? t('reading') : t('previewSave')}
           </button>
         </form>
-        {sessions.length >= 5 && <p className="warning">已达到 5 个会话上限，请删除旧会话后再保存。</p>}
-      </section>
+        {sessions.length >= 5 && <p className="warning">{t('limit')}</p>}
+      </section>}
 
       {pending && (
         <section className="preview-panel" aria-live="polite">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">保存预览</p>
+              <p className="step-label">{t('preview')}</p>
               <h2>{pending.name}</h2>
             </div>
-            <span className="preview-count">{pending.preview.includedTabCount} 个标签</span>
           </div>
-          <p className="preview-summary">{pending.preview.windows.length} 个窗口、{pending.preview.includedTabCount} 个可保存标签、{pending.preview.excludedTabs.length} 个排除项。不可恢复的标签不会写入会话。</p>
+          <p className="preview-summary">{t('previewSummary', { windows: pending.preview.windows.length, tabs: pending.preview.includedTabCount, excluded: pending.preview.excludedTabs.length })}</p>
           {pending.preview.excludedTabs.length > 0 && (
+            <details className="excluded-details">
+            <summary>{t('excluded', { count: pending.preview.excludedTabs.length })}</summary>
             <ul className="excluded-list">
               {pending.preview.excludedTabs.map((tab, index) => (
                 <li key={`${tab.url}-${index}`}>
-                  <span>{exclusionLabel(tab.reason)}</span>
+                  <span>{t(tab.reason === 'unsupported-window' ? 'unsupportedWindow' : tab.reason === 'missing-url' ? 'missingUrl' : 'unsupportedUrl')}</span>
                   <strong>{tab.title}</strong>
                   {tab.url && <small>{tab.url}</small>}
                 </li>
               ))}
             </ul>
+            </details>
           )}
           <div className="preview-actions">
             <button className="primary-button" type="button" onClick={() => void confirmSave()} disabled={busy}>
-              {busy ? '保存中…' : '确认保存'}
+              <Check size={16} aria-hidden="true" />{busy ? t('saving') : t('confirmSave')}
             </button>
             <button className="secondary-button" type="button" onClick={() => { setPending(null); setError(''); setNotice('') }} disabled={busy}>
-              取消
+              <ArrowLeft size={16} aria-hidden="true" />{t('back')}
             </button>
           </div>
         </section>
@@ -490,24 +493,23 @@ export default function Popup() {
         <section className="restore-panel" aria-live="polite">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">恢复方式</p>
+              <p className="step-label">{t('restoreHeading')}</p>
               <h2>{restoreTarget.name}</h2>
             </div>
-            <span className="preview-count">{restoreTarget.windows.length} 个窗口</span>
           </div>
           <label className="restore-mode-field">
-            窗口布局
+            {t('restoreMode')}
             <select value={restoreMode} onChange={(event) => setRestoreMode(event.target.value as RestoreMode)} disabled={busy}>
-              <option value="preserve-windows">保留窗口结构</option>
-              <option value="merge-window">合并为一个窗口</option>
+              <option value="preserve-windows">{t('preserve')}</option>
+              <option value="merge-window">{t('merge')}</option>
             </select>
           </label>
           <div className="preview-actions">
             <button className="primary-button" type="button" onClick={() => void startRestore(restoreTarget.id, restoreMode)} disabled={busy || restoreTask?.status === 'running'}>
-              {busy ? '启动中…' : '开始恢复'}
+              <ArrowUpRight size={16} aria-hidden="true" />{busy ? t('starting') : t('startRestore')}
             </button>
             <button className="secondary-button" type="button" onClick={() => setRestoreTarget(null)} disabled={busy}>
-              取消
+              <ArrowLeft size={16} aria-hidden="true" />{t('back')}
             </button>
           </div>
         </section>
@@ -517,56 +519,58 @@ export default function Popup() {
         <section className="restore-task" aria-live="polite">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">恢复任务</p>
               <h2>{restoreStatusLabel(restoreTask.status)}</h2>
             </div>
             <span className="preview-count">{restoreTask.processedTabCount}/{restoreTask.totalTabCount}</span>
+            {restoreTask.status !== 'running' && <button className="icon-button" type="button" onClick={() => setRestoreTask(null)} title={t('dismiss')} aria-label={t('dismiss')}><X size={16} aria-hidden="true" /></button>}
           </div>
+          <progress max={Math.max(restoreTask.totalTabCount, 1)} value={restoreTask.processedTabCount} aria-label={restoreStatusLabel(restoreTask.status)} />
           <p className="preview-summary">
-            新建 {restoreTask.createdWindowCount} 个窗口，打开 {restoreTask.successfulTabCount} 个标签。
-            {restoreTask.status === 'unconfirmed'
-              ? '后台中断，未自动重试；请检查浏览器后再决定是否恢复。再次恢复会再次打开这些标签。'
-              : '再次恢复会再次打开这些标签。'}
+            {t('progress', { windows: restoreTask.createdWindowCount, tabs: restoreTask.successfulTabCount })}
           </p>
+          <p className="muted">{restoreTask.status === 'unconfirmed' ? t('interrupted') : t('repeatWarning')}</p>
           {restoreTask.failures.length > 0 && (
+            <details className="excluded-details" open>
+            <summary>{t('failures', { count: restoreTask.failures.length })}</summary>
             <ul className="restore-failures">
               {restoreTask.failures.map((failure, index) => (
                 <li key={`${failure.url}-${index}`}>
-                  <strong>{failure.title || failure.url || '未命名标签页'}</strong>
-                  <small>{failure.message}{failure.url ? ` · ${failure.url}` : ''}</small>
+                  <strong>{failure.title || failure.url || t('untitled')}</strong>
+                  <small>{localizeRestoreFailure(failure, locale)}{failure.url ? ` · ${failure.url}` : ''}</small>
                 </li>
               ))}
             </ul>
+            </details>
           )}
         </section>
       )}
 
       {(error || notice) && <p className={error ? 'feedback feedback--error' : 'feedback'} role="status">{error || notice}</p>}
 
-      <section className="sessions-panel" aria-labelledby="sessions-heading">
+      {!pending && !restoreTarget && <section className="sessions-panel" aria-labelledby="sessions-heading">
         <div className="section-heading">
-          <div>
-            <p className="eyebrow">已保存</p>
-            <h2 id="sessions-heading">会话列表</h2>
-          </div>
-          <button className="text-button" type="button" onClick={() => void refreshSessions()} disabled={loading}>刷新</button>
+          <h2 id="sessions-heading">{t('recent')}</h2>
+          <button className="icon-button" type="button" title={t('refresh')} aria-label={t('refresh')} onClick={() => void refreshSessions()} disabled={loading}><RefreshCw size={16} aria-hidden="true" /></button>
         </div>
         <label className="search-field">
-          <span>搜索会话、标题或网址</span>
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="输入关键词" />
+          <Search size={16} aria-hidden="true" />
+          <span className="visually-hidden">{t('search')}</span>
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('searchPlaceholder')} />
         </label>
         {loading ? (
-          <p className="empty-state">正在读取会话…</p>
+          <p className="empty-state">{t('loading')}</p>
         ) : visibleSessions.length === 0 ? (
-          <p className="empty-state">{query.trim() ? '没有匹配的会话' : '尚未保存会话'}</p>
+          <div className="empty-state"><FolderOpen size={32} aria-hidden="true" /><p>{query.trim() ? t('noMatches') : t('empty')}</p></div>
         ) : (
           <div className="session-list">
             {visibleSessions.map((session) => (
-              <SessionItem key={session.id} session={session} onRename={renameSession} onDelete={deleteSession} onRestore={chooseRestore} restoreBusy={busy || restoreTask?.status === 'running'} />
+              <SessionItem key={session.id} session={session} onRename={renameSession} onDelete={deleteSession} onRestore={chooseRestore} restoreBusy={busy || restoreTask?.status === 'running'} compact={compact} />
             ))}
           </div>
         )}
-      </section>
-    </main>
+      </section>}
+      </div>
+      {compact && <footer className="popup-footer"><span><ShieldCheck size={13} aria-hidden="true" />{t('local')}</span><span title={`v${version}`}>{t('count', { count: sessions.length })}</span></footer>}
+    </div>
   )
 }

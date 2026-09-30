@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TabStash original brand mark, created for this project in 2026.
+  Permission is granted to use, copy, modify, and distribute this original
+  artwork with TabStash and its promotional materials, including commercially.
+  No third-party artwork, fonts, or external resources are included.
+  Geometry follows an 8-unit grid so the silhouette stays clear at 16 pixels.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <title>TabStash</title>
+  <desc>Two white browser tabs stacked in a teal storage tray.</desc>
+  <path d="M48 16h48a8 8 0 0 1 8 8v64H40V24a8 8 0 0 1 8-8Z"
+        fill="#ffffff" stroke="#37a991" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M32 32h16l8 8h24a8 8 0 0 1 8 8v40H24V40a8 8 0 0 1 8-8Z"
+        fill="#ffffff" stroke="#087f6b" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M8 72h32l8 16h32l8-16h32v28a12 12 0 0 1-12 12H20a12 12 0 0 1-12-12Z"
+        fill="#087f6b"/>
+</svg>

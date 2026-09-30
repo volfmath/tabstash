@@ -69,7 +69,7 @@ describe('createRestorePlan', () => {
     const plan = createRestorePlan(session, 'preserve-windows', () => 'plan-invalid')
 
     expect(plan.windows).toEqual([{ tabs: [{ url: 'https://valid.test/page', title: '有效页面' }] }])
-    expect(plan.invalidTabs).toEqual([{ url: 'chrome://settings', title: '设置', message: '网址协议不支持' }])
+    expect(plan.invalidTabs).toEqual([{ url: 'chrome://settings', title: '设置', message: '网址协议不支持', code: 'unsupported-url' }])
     expect(plan.totalTabCount).toBe(2)
   })
 
@@ -121,7 +121,7 @@ describe('executeRestorePlan', () => {
     expect(api.createWindow).toHaveBeenCalledOnce()
     expect(api.createTab).toHaveBeenCalledTimes(2)
     expect(result.successfulTabCount).toBe(2)
-    expect(result.failures).toEqual([{ url: 'https://two.test/two', title: 'Two', message: 'blocked by browser' }])
+    expect(result.failures).toEqual([{ url: 'https://two.test/two', title: 'Two', message: 'blocked by browser', code: 'browser-open-failed' }])
     expect(taskStore.tasks.at(-1)).toMatchObject({ status: 'completed-with-errors', processedTabCount: 3 })
   })
 

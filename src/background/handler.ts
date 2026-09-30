@@ -321,6 +321,7 @@ async function previewImport(document: unknown, dependencies: BackgroundDependen
       code: 'invalid-backup' as const,
       message: validation.errors.join('；'),
       errors: validation.errors,
+      details: validation.details,
     }
   }
   const previewToken = await (dependencies.backupPreviewCache ?? defaultBackupPreviewCache).put(document as import('../lib/backup').BackupDocument)
@@ -342,6 +343,7 @@ async function importBackup(previewToken: string, document: unknown, dependencie
         code: 'invalid-backup' as const,
         message: validation.errors.join('；'),
         errors: validation.errors,
+        details: validation.details,
       }
     }
     if (!dependencies.store.importSessions) throw new StorageAccessError('导入服务不可用')

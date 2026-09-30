@@ -1,0 +1,5 @@
+{
+  "extensionName": { "message": "Tabstash" },
+  "extensionDescription": { "message": "Save browser tab sessions locally." },
+  "openSavePopup": { "message": "Open the Tabstash save entry; open settings when unavailable" }
+}

@@ -1,0 +1,5 @@
+{
+  "extensionName": { "message": "Tabstash" },
+  "extensionDescription": { "message": "在本地保存浏览器标签页会话。" },
+  "openSavePopup": { "message": "打开 Tabstash 保存入口；不支持时打开设置页" }
+}

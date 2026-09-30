@@ -5,3 +5,4 @@ releases/
 coverage/
 *.log
 *.tsbuildinfo
+artifacts/

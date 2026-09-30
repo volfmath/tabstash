@@ -1,6 +1,6 @@
 import type { CapturedSession, ExcludedTab } from '../lib/session-capture'
 import type { RestoreTask, RestoreResult } from '../lib/restore'
-import type { BackupDocument, BackupValidation } from '../lib/backup'
+import type { BackupDocument, BackupValidation, BackupValidationDetail } from '../lib/backup'
 import type { SavedSession, SaveScope } from '../types/session'
 import type { RestoreMode } from '../types/session'
 
@@ -92,6 +92,7 @@ export interface MessageFailure {
     | 'unknown-error'
   message: string
   errors?: string[]
+  details?: BackupValidationDetail[]
   excludedTabs?: ExcludedTab[]
   preview?: CapturedSession
   previewToken?: string

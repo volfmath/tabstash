@@ -100,4 +100,42 @@ describe('Popup restore lifecycle', () => {
     expect(container.textContent).toContain('恢复完成')
     expect(polls).toBe(2)
   })
+
+  it('offers a manager entry and keeps label details out of the quick popup', async () => {
+    const openOptionsPage = vi.fn()
+    chrome.runtime.openOptionsPage = openOptionsPage
+    sendMessage.mockImplementation(async (message: BackgroundMessage) => {
+      if (message.type === 'list-sessions') return { ok: true, sessions: [session] }
+      if (message.type === 'list-restore-tasks') return { ok: true, tasks: [] }
+    })
+    await mount()
+    expect(container.querySelector('.session-details')).toBeNull()
+    const manager = container.querySelector<HTMLButtonElement>('[aria-label="打开管理页"]')!
+    expect(manager).not.toBeNull()
+    await act(async () => manager.click())
+    expect(openOptionsPage).toHaveBeenCalledOnce()
+  })
+
+  it('uses a separate preview step and returns to the list on cancel', async () => {
+    sendMessage.mockImplementation(async (message: BackgroundMessage) => {
+      if (message.type === 'list-sessions') return { ok: true, sessions: [session] }
+      if (message.type === 'list-restore-tasks') return { ok: true, tasks: [] }
+      if (message.type === 'preview-session') return {
+        ok: true, previewToken: 'preview-1', preview: { windows: session.windows, includedTabCount: 1, excludedTabs: [] },
+      }
+    })
+    await mount()
+    const input = container.querySelector<HTMLInputElement>('.save-form input')!
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'New session')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => container.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+    expect(container.querySelector('.preview-panel')).not.toBeNull()
+    expect(container.querySelector('.save-form')).toBeNull()
+    expect(container.querySelector('.session-list')).toBeNull()
+    await act(async () => Array.from(container.querySelectorAll('button')).find(button => button.textContent?.includes('返回'))!.click())
+    expect(container.querySelector('.save-form')).not.toBeNull()
+    expect(container.querySelector('.session-list')).not.toBeNull()
+  })
 })
