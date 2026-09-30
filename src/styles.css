@@ -11,7 +11,7 @@
 }
 
 /* Launch polish: keep the toolbar view scannable and give the manager room to breathe. */
-body.popup-document { width: 410px; min-width: 360px; max-width: 460px; overflow-x: hidden; }
+body.popup-document { width: 480px; min-width: 420px; max-width: 520px; overflow-x: hidden; }
 .popup-shell { display: flex; flex-direction: column; width: 100%; max-height: 600px; padding: 16px; }
 .popup-shell > .app-header, .popup-footer { flex: 0 0 auto; }
 .popup-shell .workspace-body { min-height: 0; overflow-y: auto; }
@@ -21,7 +21,8 @@ body.popup-document { width: 410px; min-width: 360px; max-width: 460px; overflow
 .brand-heading h1 { font-size: 20px; }
 .workspace-body { min-width: 0; }
 .step-label { margin-bottom: 4px; color: #c15b32; font-size: 10px; font-weight: 800; letter-spacing: 0; text-transform: uppercase; }
-.save-form { grid-template-columns: minmax(0, 1fr) 145px; gap: 8px; margin-top: 10px; }
+.popup-shell .save-form { grid-template-columns: 1fr; gap: 9px; margin-top: 10px; }
+.popup-shell .save-form .primary-button { width: 100%; }
 .save-form label { min-width: 0; }
 .save-form .primary-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
 .primary-button, .secondary-button, .restore-button, .icon-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
@@ -36,7 +37,8 @@ body.popup-document { width: 410px; min-width: 360px; max-width: 460px; overflow
 .restore-button:hover { background: #185d66; }
 .popup-shell .session-item { padding: 10px; }
 .popup-shell .session-item__header { align-items: center; }
-.popup-shell .session-actions .restore-button { padding: 6px 8px; }
+.popup-shell .session-actions { flex-wrap: nowrap; }
+.popup-shell .session-actions .restore-button { padding: 6px 9px; white-space: nowrap; }
 .popup-shell .session-meta { margin-top: 4px; }
 .popup-shell .session-list { max-height: 270px; overflow-y: auto; padding-right: 2px; }
 .search-field { position: relative; display: flex; align-items: center; }
@@ -101,7 +103,7 @@ body.popup-document { width: 410px; min-width: 360px; max-width: 460px; overflow
 }
 
 @media (max-width: 380px) {
-  body.popup-document { width: 360px; }
+  body.popup-document { width: 420px; min-width: 360px; }
   .popup-shell { padding: 14px; }
   .save-form { grid-template-columns: 1fr; }
   .save-form .primary-button { grid-column: auto; }

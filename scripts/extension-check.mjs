@@ -38,7 +38,7 @@ context = await chromium.launchPersistentContext(profilePath, {
   const pages = []
 
   for (const [name, route, width] of [
-    ['popup', 'src/popup/index.html', 410],
+    ['popup', 'src/popup/index.html', 480],
     ['options', 'src/options/index.html#sessions', 1280],
   ]) {
     const page = await context.newPage()
@@ -58,7 +58,7 @@ context = await chromium.launchPersistentContext(profilePath, {
 
   const popup = await context.newPage()
   console.log('Check: persistent cross-page language')
-  await popup.setViewportSize({ width: 410, height: 600 })
+  await popup.setViewportSize({ width: 480, height: 600 })
   const manager = await context.newPage()
   for (const page of [popup, manager]) page.on('pageerror', error => errors.push(error.message))
   const extensionURL = `chrome-extension://${extensionId}`

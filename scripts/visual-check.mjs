@@ -51,13 +51,16 @@ async function capture(locale, name, route, viewport, count, preview = false) {
     }
     const result = await page.evaluate(() => ({
       width: innerWidth,
+      popupWidth: document.querySelector('.popup-shell')?.getBoundingClientRect().width,
+      saveFormColumns: getComputedStyle(document.querySelector('.popup-shell .save-form') ?? document.body).gridTemplateColumns,
+      sessionActionsWrapped: [...document.querySelectorAll('.popup-shell .session-actions')].some(element => element.scrollHeight > element.clientHeight + 2),
       overflowX: document.documentElement.scrollWidth > innerWidth,
       popupHeight: document.querySelector('.popup-shell')?.getBoundingClientRect().height,
       missingImages: [...document.images].filter(img => !img.complete || !img.naturalWidth).length,
     }))
     await page.screenshot({ path: `artifacts/${name}-${locale}.png`, fullPage: true })
     console.log(`${name}-${locale}: ${JSON.stringify(result)}`)
-    if (result.overflowX || result.missingImages || result.popupHeight > 600) failures.push(`${name}-${locale}: layout or image check failed`)
+    if (result.overflowX || result.missingImages || result.popupHeight > 600 || (name.startsWith('popup-') && !name.includes('preview') && (result.popupWidth < 450 || result.sessionActionsWrapped || !result.saveFormColumns.includes('px')))) failures.push(`${name}-${locale}: layout or image check failed`)
     assert.equal(result.width, viewport.width)
   } finally {
     await context.close()
@@ -66,8 +69,8 @@ async function capture(locale, name, route, viewport, count, preview = false) {
 
 try {
   for (const locale of ['en', 'zh-CN']) {
-    for (const count of [0, 5]) await capture(locale, `popup-${count}`, 'src/popup/index.html', { width: 410, height: 600 }, count)
-    await capture(locale, 'popup-preview', 'src/popup/index.html', { width: 410, height: 600 }, 1, true)
+    for (const count of [0, 5]) await capture(locale, `popup-${count}`, 'src/popup/index.html', { width: 480, height: 600 }, count)
+    await capture(locale, 'popup-preview', 'src/popup/index.html', { width: 480, height: 600 }, 1, true)
     for (const view of ['sessions', 'backup', 'settings']) {
       for (const width of [1280, 390, 320]) {
         await capture(locale, `manager-${view}-${width}`, `src/options/index.html#${view}`, { width, height: 800 }, 5)
