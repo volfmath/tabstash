@@ -1,6 +1,7 @@
 .superpowers/
 node_modules/
 dist/
+releases/
 coverage/
 *.log
 *.tsbuildinfo
