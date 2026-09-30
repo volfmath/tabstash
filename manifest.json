@@ -3,10 +3,20 @@
   "name": "Tabstash",
   "version": "0.1.0",
   "description": "本地保存浏览器标签页会话。",
+  "minimum_chrome_version": "127",
   "permissions": ["storage", "tabs"],
   "action": {
     "default_title": "Tabstash",
     "default_popup": "src/popup/index.html"
+  },
+  "commands": {
+    "open-save-popup": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "打开 Tabstash 保存入口；不支持时打开设置页"
+    }
   },
   "options_page": "src/options/index.html",
   "background": {

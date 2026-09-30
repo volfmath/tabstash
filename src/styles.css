@@ -36,9 +36,11 @@ h4 { color: #526a73; font-size: 12px; font-weight: 700; text-transform: uppercas
 }
 .text-button, .session-actions button { padding: 6px 9px; }
 .text-button:hover, .session-actions button:hover, .rename-form button:hover, .secondary-button:hover { border-color: #6d9aa3; background: #f5fafb; }
-.save-panel, .preview-panel, .sessions-panel { border-top: 1px solid #cfdcdf; padding: 18px 0; }
+.save-panel, .preview-panel, .restore-panel, .restore-task, .sessions-panel { border-top: 1px solid #cfdcdf; padding: 18px 0; }
 .save-panel { border-top: 3px solid #287d86; }
 .preview-panel { border-top-color: #c15b32; }
+.restore-panel { border-top-color: #28717a; }
+.restore-task { border-top-color: #78959a; }
 .limit-label, .preview-count { flex: 0 0 auto; padding: 5px 8px; border-radius: 999px; background: #dcecee; color: #27616b; font-size: 11px; font-weight: 800; }
 .preview-count { background: #f6e3d9; color: #9b4b2d; }
 
@@ -63,6 +65,17 @@ input:focus, select:focus { border-color: #287d86; box-shadow: 0 0 0 2px #c9e6e8
 .preview-actions { align-items: center; justify-content: flex-start; margin-top: 14px; }
 .secondary-button { padding: 10px 14px; }
 .search-field { margin-top: 14px; }
+.restore-mode-field { margin-top: 14px; }
+.restore-failures { display: grid; gap: 6px; list-style: none; margin: 12px 0 0; padding: 0; }
+.restore-failures li { display: grid; gap: 2px; min-width: 0; border-left: 2px solid #d98b6d; background: #fff8f4; padding: 7px 9px; font-size: 11px; }
+.restore-failures strong, .restore-failures small { min-width: 0; overflow-wrap: anywhere; }
+.restore-failures small { color: #7b6a64; }
+.options-shell { width: min(720px, calc(100vw - 40px)); margin: 0 auto; padding: 32px 0 48px; }
+.options-section { border-top: 1px solid #cfdcdf; padding: 22px 0; }
+.options-section h2 { margin: 0 0 8px; }
+.import-preview { display: grid; gap: 8px; margin-top: 16px; border-left: 3px solid #287d86; background: #eef7f6; padding: 12px; }
+.import-preview p { margin: 0; color: #526a73; font-size: 13px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; clip-path: inset(50%); }
 
 .session-list { display: grid; gap: 8px; margin-top: 14px; }
 .session-item { border: 1px solid #cbd8da; border-radius: 6px; background: #fff; padding: 12px; }

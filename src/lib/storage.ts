@@ -58,6 +58,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isSavedTab(value: unknown): value is SavedTab {
   return (
     isRecord(value) &&
+    hasExactKeys(value, ['url', 'title']) &&
     typeof value.url === 'string' &&
     isRestorableUrl(value.url) &&
     typeof value.title === 'string'
@@ -65,12 +66,13 @@ function isSavedTab(value: unknown): value is SavedTab {
 }
 
 function isSavedWindow(value: unknown): value is SavedWindow {
-  return isRecord(value) && Array.isArray(value.tabs) && value.tabs.every(isSavedTab)
+  return isRecord(value) && hasExactKeys(value, ['tabs']) && Array.isArray(value.tabs) && value.tabs.every(isSavedTab)
 }
 
 function isSavedSession(value: unknown): value is SavedSession {
   return (
     isRecord(value) &&
+    hasExactKeys(value, ['id', 'name', 'createdAt', 'windows']) &&
     typeof value.id === 'string' &&
     isUuid(value.id) &&
     typeof value.name === 'string' &&
@@ -87,6 +89,11 @@ function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
 
+function hasExactKeys(value: Record<string, unknown>, keys: string[]): boolean {
+  const actualKeys = Object.keys(value)
+  return actualKeys.length === keys.length && keys.every((key) => Object.prototype.hasOwnProperty.call(value, key))
+}
+
 function isIsoTimestamp(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) return false
   const timestamp = Date.parse(value)
@@ -96,6 +103,7 @@ function isIsoTimestamp(value: string): boolean {
 export function validateStoredState(value: unknown): StoredState {
   if (
     !isRecord(value) ||
+    !hasExactKeys(value, ['schemaVersion', 'sessions']) ||
     value.schemaVersion !== SCHEMA_VERSION ||
     !Array.isArray(value.sessions) ||
     value.sessions.length > MAX_SESSIONS ||
@@ -104,7 +112,7 @@ export function validateStoredState(value: unknown): StoredState {
     throw new StorageValidationError('本地会话数据格式无效或版本不受支持')
   }
 
-  const ids = new Set(value.sessions.map((session) => session.id))
+  const ids = new Set(value.sessions.map((session) => session.id.toLowerCase()))
   if (ids.size !== value.sessions.length) {
     throw new StorageValidationError('本地会话数据包含重复 ID')
   }
@@ -151,7 +159,7 @@ export class SessionStore {
     return this.enqueue(async () => {
       const current = await this.readState()
       if (current.sessions.length >= MAX_SESSIONS) throw new StorageLimitError()
-      if (current.sessions.some((existing) => existing.id === session.id)) {
+      if (current.sessions.some((existing) => existing.id.toLowerCase() === session.id.toLowerCase())) {
         throw new StorageValidationError('本地会话数据包含重复 ID')
       }
 
@@ -164,6 +172,32 @@ export class SessionStore {
       }
       validateStoredState(candidate)
       return this.persist(candidate)
+    })
+  }
+
+  async importSessions(sessions: SavedSession[]): Promise<{ state: StoredState; addedSessionCount: number; skippedSessionCount: number }> {
+    return this.enqueue(async () => {
+      const current = await this.readState()
+      const ids = new Set(current.sessions.map((session) => session.id.toLowerCase()))
+      const sessionsToAdd: SavedSession[] = []
+      let skippedSessionCount = 0
+      for (const session of sessions) {
+        const id = session.id.toLowerCase()
+        if (ids.has(id)) {
+          skippedSessionCount += 1
+          continue
+        }
+        ids.add(id)
+        sessionsToAdd.push(session)
+      }
+      if (current.sessions.length + sessionsToAdd.length > MAX_SESSIONS) throw new StorageLimitError()
+      const candidate: StoredState = {
+        schemaVersion: SCHEMA_VERSION,
+        sessions: [...current.sessions, ...sessionsToAdd],
+      }
+      validateStoredState(candidate)
+      const state = sessionsToAdd.length > 0 ? await this.persist(candidate) : current
+      return { state, addedSessionCount: sessionsToAdd.length, skippedSessionCount }
     })
   }
 

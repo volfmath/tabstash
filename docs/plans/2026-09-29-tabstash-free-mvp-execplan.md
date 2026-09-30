@@ -18,13 +18,18 @@ Tabstash 当前只有产品文档，没有可运行的扩展。完成本计划�
 - [x] (2026-09-29 23:39 +08:00) 创建本 ExecPlan；实现代码尚未开始。
 - [x] (2026-09-30 01:31 +08:00) 完成项目脚手架、Manifest V3 配置和可加载的最小扩展；构建输出包含 `manifest.json`、popup、options 和 service worker。
 - [x] (2026-09-30 03:20 +08:00) 完成版本化本地存储、会话采集、保存、预览确认、重命名、删除和五个会话上限；自动验证为 7 个测试文件、36 个测试通过，M2 三道中文评审全部通过。
-- [ ] 完成单窗口/多窗口恢复、合并恢复、部分失败反馈和后台任务状态。
+- [x] (2026-09-30 08:24 +08:00) 完成单窗口/多窗口恢复、合并恢复、部分失败反馈和后台任务状态；补充批量进度写入、空窗口保留、单活动恢复限制和 popup 任务失败反馈。三道 M4 中文 Gate 已完成并记录。
 - [x] (2026-09-30 04:42 +08:00) 完成 popup 保存预览/确认、会话列表、搜索、主机名分组、重命名和删除；快捷键按 M5 处理。
-- [ ] 完成 JSON 导出、导入预览、校验和全量拒绝策略。
-- [ ] 更新 README 使其与免费版边界一致，并补充发布前隐私与权限说明。
+- [x] (2026-09-30 09:06 +08:00) 完成 JSON 导出、导入预览、校验和全量拒绝策略；新增 options 页面和后台确认令牌。快捷键入口已配置，真实 Chrome 快捷键行为留 M6 验收。
+- [x] (2026-09-30 09:45 +08:00) 更新 README、Manifest 和中文发布检查，明确免费版边界、权限、备份隐私风险与快捷键失败兜底。
+- [x] (2026-09-30 09:45 +08:00) 根据 M5 评审修正大小写不敏感的 UUID 去重、未知字段拒绝、导入失败释放令牌和快捷键设置页兜底；新增 6 个回归测试。
 - [x] (2026-09-30 03:20 +08:00) 已完成并记录 M1、M2 的三道中文评审门；后续 M3-M6 仍需在各自实现边界复审。
 - [x] (2026-09-30 04:42 +08:00) 完成 M3 popup 代码、自动验证和三道中文 Gate；真实 Chrome 手工验收仍待 M6。
-- [ ] 运行单元测试、构建检查和真实 Chrome 手工验收；形成最终 Outcomes & Retrospective。
+- [x] (2026-09-30 11:22 +08:00) 根据 M5/M6 复审补充超过 2 MB 的备份往返、提交时导入计数、恢复请求 ID 去重、暂时性轮询错误重试、5 MB 保存预览预算和 32 MB 文件读取防护；定向测试及类型检查通过。
+- [x] (2026-09-30 11:45 +08:00) 增加 jsdom 开发测试环境与三条 React/DOM 回归，修复未知恢复请求被结构化错误清空、运行中重复点击中断轮询；全量 15 文件、82 测试通过，typecheck、build、diff-check 通过，生产依赖审计零漏洞。
+- [x] (2026-09-30 12:16 +08:00) 最终自动检查为 16 文件/83 测试、typecheck、build、diff-check 通过；三位独立子代理完成代码层 Gate 1/2/3，结论全部通过；中文记录保留非阻断风险。
+- [ ] 提交并推送 M4/M5/M6 候选实现到 Gitee。
+- [ ] (部分完成：代码与自动检查完成；真实 Chrome 手工验收未完成) 完成 M6 发布检查和真实浏览器闭环验收。
 
 ## Surprises & Discoveries
 
@@ -46,6 +51,22 @@ Tabstash 当前只有产品文档，没有可运行的扩展。完成本计划�
   Evidence: 客户端消息不再接受 `capture` 字段；后台只接受绑定保存范围的 token，成功保存后消费，明确存储失败才 release。
 - Observation: CRXJS 开发服务器会改写 HTML 入口为 `@crx/inline-script`，不能用原始 `main.tsx` 字符串匹配判断入口未加载。
   Evidence: `Invoke-WebRequest http://127.0.0.1:5173/src/popup/index.html` 返回 200，并包含 CRXJS inline module；popup/options 路由均可访问。
+- Observation: 恢复任务的状态读取也必须进入同一 read-modify-write 队列，否则过期清理可能用旧快照覆盖最新进度。
+  Evidence: 新增的 `restore-tasks.test.ts` 延迟写入测试在旧实现上失败，修复后验证“并发保存不会被过期清理覆盖”。
+- Observation: 每个标签页写一次 `chrome.storage.session` 会使大恢复的序列化和写入成本随失败列表累积增长。
+  Evidence: M4 Gate 3 评审指出旧实现对 25 个标签页调用 27 次保存；现在按 10 个标签或 1 秒检查点写入，并始终保存终态。
+- Observation: 备份校验中的 UUID 字符串比较必须遵循 UUID 的大小写不敏感语义，且结构校验不能只检查必需字段。
+  Evidence: M5 Gate 1 以相同 UUID 的大小写变体构造了重复导入；旧实现会放行，修复后使用小写比较键并对根对象、会话、窗口和标签拒绝未知字段。
+- Observation: 导入预览令牌在存储写入失败后若直接消费，会把暂时性错误变成不可重试的用户错误。
+  Evidence: 回归测试第一次导入返回 `storage-error` 后，第二次使用相同令牌仍可到达存储写入；成功导入才消费令牌，失败会释放 claim。
+- Observation: Chrome 不一定允许快捷键直接调用 `action.openPopup()`，但新增权限不是必要条件。
+  Evidence: 快捷键适配器在 popup 失败后调用 `runtime.openOptionsPage()`；options 页面提供进入 `src/popup/index.html` 的保存入口，真实浏览器行为仍列为 M6 手工验收。
+- Observation: 完整备份放进 `storage.session` 会造成已导出的较大 JSON 无法导回；保存预览缓存也会被多次大标签预览填满。
+  Evidence: M5 Gate 2 找到 2 MB 导入上限与无上限导出的矛盾；M6 Gate 3 找到保存预览无字节预算。前者改为只缓存 SHA-256 摘要与令牌，后者加入 5 MB 总预算与旧令牌淘汰；超过 2 MB 的往返和配额回归测试已从红转绿。
+- Observation: Chrome 111 及更早版本的 `storage.session` 限额为 1 MB，且普通扩展 `action.openPopup()` 支持始于较新的 Chrome。
+  Evidence: Gate 2 指出最低版本 102 与大预览和快捷键目标冲突；manifest 最低版本改为 127，真实 Chrome 127 兼容性仍未实测。
+- Observation: 本机 Chrome 版本为 `153.0.8010.54`，隔离 profile 的远程调试端口未启动。
+  Evidence: `Invoke-WebRequest http://127.0.0.1:9223/json/version` 返回无法连接；真实扩展交互、100+ 标签和快捷键不能记为通过。
 
 ## Decision Log
 
@@ -85,10 +106,46 @@ Tabstash 当前只有产品文档，没有可运行的扩展。完成本计划�
 - Decision: M3 保存表单统一走 `preview-session` 后再用后台 token `save-session` 确认，即使没有排除项也不直接显示成功。
   Rationale: 用户先看到窗口/标签数量，部分不可恢复 URL 可在写入前取消；弹窗只消费后台结果，不维护自己的持久化副本。
   Date/Author: 2026-09-30 / Codex。
+- Decision: 恢复任务最多同时运行一个；再次启动返回可行动的忙碌提示，历史任务仍最多保留十条。
+  Rationale: 恢复会创建真实窗口和标签，重复点击无法安全幂等；限制并发比尝试猜测哪些标签已打开更可靠，且不改变“恢复始终新建窗口”的语义。
+  Date/Author: 2026-09-30 / 用户与 Codex。
+- Decision: 保留窗口结构模式会为混合会话中的空窗口创建空白新窗口；若整个计划没有任何可恢复标签则不创建窗口。
+  Rationale: 保存结构中空窗口仍是用户可见的窗口位置，不能静默丢失；全空计划没有可验证的恢复内容，保持无副作用。
+  Date/Author: 2026-09-30 / Codex。
+- Decision: 恢复进度按十个标签或一秒写入一次，并在完成时强制写入终态；service worker 中断仍标记未确认且不自动重试。
+  Rationale: 在大标签数量下减少 `chrome.storage.session` 写放大，同时保留可用的进度反馈和不重复打开标签的安全边界。
+  Date/Author: 2026-09-30 / Codex。
+- Decision: stale 检查只把“当前 service worker 没有活动标记”的旧 running 任务改为 `unconfirmed`；当前 worker 正在执行的任务受运行时活动集合保护。
+  Rationale: 避免弹窗轮询在单次 Chrome API 调用较慢时误判并发恢复，同时仍能在 worker 重启后识别没有执行者的旧任务。运行时集合不是持久锁，因此真实浏览器中断仍必须由用户确认后重新恢复。
+  Date/Author: 2026-09-30 / Codex。
+- Decision: JSON 导入预览由后台根据当前状态生成确认令牌，确认时重新校验当前状态后才批量写入。
+  Rationale: options 页面可以读取文件并展示反馈，但不能直接提交客户端构造的会话；重新校验可处理预览期间现有会话发生变化，并保持追加、不覆盖、全量拒绝语义。
+  Date/Author: 2026-09-30 / Codex。
+- Decision: UUID 去重使用不区分大小写的规范比较键，备份和本地状态拒绝根对象、会话、窗口、标签的未知字段。
+  Rationale: UUID 的十六进制字符大小写不改变标识；严格字段边界避免未定义数据随备份写入本地状态，并让“字段错误整次拒绝”成为可验证行为。
+  Date/Author: 2026-09-30 / Codex。
+- Decision: 导入令牌只有成功写入后才消费；校验、读取或写入失败时释放 claim。
+  Rationale: 保持旧数据不变的同时允许用户在暂时性存储失败后重试，且不会放宽成功导入的防重放保护。
+  Date/Author: 2026-09-30 / Codex。
+- Decision: 快捷键打开 popup 失败时打开 options 页面，由页面提供进入保存页面的按钮。
+  Rationale: 不增加通知权限，并且不绕过保存名称、范围和确认流程；快捷键兼容性仍通过真实 Chrome 手工验收确认。
+  Date/Author: 2026-09-30 / Codex。
+- Decision: 导入预览只在短期存储保留文档摘要和令牌，确认时由 options 回传原文档，后台核对摘要并重新校验。
+  Rationale: 成功导出的大会话备份必须可导回，但完整 JSON 缓存在 `storage.session` 会触及额外配额；摘要绑定防止确认时换文档。
+  Date/Author: 2026-09-30 / Codex，依据 M5 Gate 2。
+- Decision: 导入新增/跳过数由 `SessionStore` 在写队列内按提交时状态计算；恢复命令带 `requestId`，同一请求重复提交返回已有任务。
+  Rationale: 预览和最终写入之间可发生删除或新增；恢复启动响应也可能丢失，两处都不能只依赖 UI 先前看到的状态。
+  Date/Author: 2026-09-30 / Codex，依据 M6 Gate 1。
+- Decision: 最低 Chrome 版本调整为 127；保存预览缓存最多 5 MB，JSON 文件读取最多 32 MB，备份超过五个会话尽早拒绝。
+  Rationale: 避免旧版 1 MB 临时存储容量与保存预览冲突，限制大文件和反复预览的资源消耗；实际浏览器兼容与 100+ 标签性能仍待实测。
+  Date/Author: 2026-09-30 / Codex，依据 M6 Gate 2/3。
+- Decision: JSON 下载使用紧凑序列化，不增加美化缩进；M4/M5 共用消息协议与 popup 的未提交实现以一个候选版本提交。
+  Rationale: 大量空窗口会使缩进把可导入备份膨胀到文件读取上限之外；紧凑 JSON 保留全部数据。恢复和备份改动已经交织在同一消息处理器中，完整自动检查和三道代码 Gate 以同一工作树为单位，合并提交避免人为拆分出不可构建状态；真实 Chrome 验收不随此提交宣称完成。
+  Date/Author: 2026-09-30 / Codex，依据最终 Gate 2。
 
 ## Outcomes & Retrospective
 
-M1-M3 的代码结果已经形成：Manifest V3 工程可构建，版本化本地状态、窗口采集、后台保存/预览确认/列表/重命名/删除消息处理和 popup 管理体验已实现。M3 提交前自动验证为 8 个测试文件、39 个测试通过；当前工作树还包含正在进行的 M4 恢复测试，完整验证为 11 个测试文件、49 个测试通过。`npm run typecheck`、`npm run build` 和 `git diff --check` 通过；开发服务器的 popup/options 入口均返回 200。真实 Chrome 加载、保存和刷新后的用户流程仍属于 M6 验收，不能由本地构建替代；此前 Chrome 自动化产生的两个隔离 profile 目录已清理，未进入 Git。
+M1-M5 的功能代码已形成，免费版本地手动保存、管理/搜索、双模式恢复、进度与失败反馈、JSON 备份/导入、options 和快捷键兜底均可构建。最终检查为 16 文件/83 测试、typecheck、build、diff-check 通过，三道独立代码 Gate 全部通过；容量、并发导入和 popup 恢复问题均有回归。交付状态为候选实现，不是已通过发布验收的正式版本：真实 Chrome 加载、保存/刷新、窗口结构、100+ 标签、worker 中断、快捷键和 JSON 往返仍未验收。中文证据与剩余任务见 `docs/verification/2026-09-30-free-mvp-checklist.zh-CN.md` 和 `docs/handoffs/2026-09-30-1216-free-mvp-candidate.zh-CN.md`。
 
 ## Context and Orientation
 
@@ -160,6 +217,14 @@ M3 评审记录：
 
 后台恢复先验证 URL，再使用第一个有效 URL 创建目标窗口，避免留下初始空白标签；随后按保存顺序创建剩余标签。无法创建的标签记录 URL、标题和 Chrome 错误原因。任务状态写入 `chrome.storage.session`，包括任务 ID、session ID、状态、已处理数量和失败项；popup 关闭不主动取消任务。后台 service worker 中断后，重新打开 popup 时把长时间没有终态的任务显示为“结果未确认”，不自动续传或重试，避免重复标签。原会话绝不删除。
 
+M4 Gate 记录：
+
+    评审时间：2026-09-30 08:50 +08:00
+    Gate 1 逻辑反方/辩论：核心逻辑通过修正。评审发现并修复了任务读写竞态、混合会话空窗口丢失、重复恢复并发、popup 启动响应竞态和轮询旧响应覆盖新任务；当前 worker 的活动任务集合保护 stale 判断。残余风险是 MV3 worker 可能在长任务中被回收，按设计显示未确认且不自动重试。
+    Gate 2 设计一致性 review：实现语义通过，计划契约已改为 startRestore 返回 RestoreTask、getRestoreTask 查询四种状态。窗口保留/合并、原会话不变、失败清单和免费版边界一致；补充了未确认状态下重复打开标签的明确提示。README 仍留到 M6 同步。
+    Gate 3 影响面与性能 review：代码路径通过隔离检查。恢复使用独立 session key，普通保存/搜索/重命名/删除未被修改；进度按十个标签或一秒批量写入，并有活动任务保护。真实 Chrome 的 popup 关闭、worker 回收、100+ 标签和 API 延迟仍是 M6 发布验收风险，不能由单元测试替代。
+    评审证据：M4 定向测试 18 个通过；全量测试、typecheck、build 和 diff-check 在 M4 提交前重新执行；三次独立子代理复审结论及修复记录已纳入本计划。真实 Chrome 验收未宣称通过。
+
 测试必须覆盖：空会话不创建窗口；单窗口恢复创建一个新窗口；多窗口保留模式创建正确数量的新窗口；合并模式只创建一个新窗口；用户原有窗口数量不变；一个无效 URL 不阻止其余 URL 尝试；Chrome API 部分失败显示失败清单；恢复中断不产生自动重试。真实 Chrome 手工验收需记录恢复前后窗口数量、标签数量和失败反馈。完成后执行三道中文评审门，重点挑战重复恢复、service worker 中断、初始空白标签和大量标签的时间/资源成本。
 
 ### Milestone 5: 加入快捷键、JSON 备份/导入和设置页
@@ -169,6 +234,18 @@ M3 评审记录：
 在 `src/lib/backup.ts` 实现 JSON 导出和导入校验。导出格式包含 `schemaVersion`、`exportedAt` 和 `sessions`。导入先解析完整文件并生成预览，再一次性验证版本、字段类型、URL 协议、文件内部重复 ID、现有 ID 和五个会话上限；文件内部重复 ID 直接拒绝，与现有 ID 相同的记录跳过，新增后超过五个则整次拒绝，任何失败都不修改现有数据。导入成功后一次性写入并显示新增/跳过数量。
 
 在 `src/options/Options.tsx` 提供导出、选择 JSON 文件、预览、确认导入和隐私说明。popup 提供打开 options 的入口。导入测试要覆盖空文件、错误 JSON、未来 schema、字段缺失、非 HTTP(S) URL、内部重复、现有重复、超额和成功 round-trip。手工验收要在全新扩展数据中导出，再清空数据并导入，确认会话、顺序和名称一致。完成后执行三道中文评审门，重点检查导入是否可能覆盖/半成功、快捷键是否误导用户、备份是否把 URL 明文风险说清楚。
+
+M5 修正记录：初次 Gate 1/2 发现 UUID 大小写变体可绕过重复检查、未知字段会被保留、导入写入失败会消费预览令牌，以及快捷键失败没有可行动入口。现已在 `src/lib/storage.ts`、`src/lib/backup.ts`、`src/background/backup-previews.ts`、`src/background/handler.ts`、`src/background/shortcut.ts` 和 `src/options/Options.tsx` 修正，并由备份、后台和快捷键回归测试覆盖。现有 ID 的重复仍按已确认设计跳过，不覆盖本地会话。
+
+M5/M6 复审记录（未通过，修正后需重新 Gate）：2026-09-30 11:15 +08:00，三位独立子代理分别执行中文 Gate 1/2/3。Gate 1 指出导入在预览与写入之间删除会话可能漏导、恢复启动响应丢失后重试可重复开窗、一次轮询错误被误标未确认；Gate 2 指出 Chrome 102 的 1 MB 临时存储与大预览冲突，且此前导出超过 2 MB 无法导回；Gate 3 指出反复预览无总字节预算、备份读取缺少文件上限、折叠详情仍预渲染所有标签。上述代码问题已针对性修改，尚不能把这一轮失败评审记录为通过；真实 Chrome 验收仍未完成。
+
+M4/M5/M6 候选代码最终 Gate 记录：
+
+    评审时间：2026-09-30 12:16 +08:00
+    Gate 1 逻辑反方/辩论：代码层通过。独立代理 Curie 复核导入提交时去重/计数、恢复同 requestId 返回已有任务、未知响应后 ID 保留、running 时禁用恢复及瞬时查询错误后继续轮询；定向复跑 7 文件/51 测试通过。非阻断：内存备用缓存 claim 有竞态，生产路径使用串行 session 缓存；临时历史十条不提供永久幂等。
+    Gate 2 设计一致性 review：代码层通过。独立代理 Epicurus 核对 Chrome 127、免费版范围、摘要令牌、2 MB 以上往返及容量契约；实际 options 下载复验把格式化 33,600,408 字节变为紧凑 9,600,244 字节，800,001 个窗口完整且能进入导入预览。
+    Gate 3 影响面与性能 review：代码层通过。独立代理 Noether 核对权限与无网络路径、5 MB 预览预算、20 条小摘要缓存、32 MB 文件读取防护、五会话提前拒绝、折叠详情节点 0→100→0 和 100 标签恢复十二次状态写入。非阻断：恢复失败清单无独立字节预算；后台已满保存仍会额外读取一次窗口。
+    评审证据：最新全量 16 文件/83 测试、typecheck、build、diff-check 均退出 0；生产依赖 audit 零漏洞。三位代理均只读复审。上述通过仅是代码层，M6 真实 Chrome 发布验收仍未完成，不把本地构建或 DOM 测试当作浏览器验收。
 
 ### Milestone 6: 同步文档、发布检查和完整验收
 
@@ -219,7 +296,7 @@ M3 评审记录：
 7. 导出 JSON，在全新扩展数据中导入，确认名称、窗口数量、标签顺序和 URL 相同；用错误 JSON、重复 ID 和超额文件确认整次拒绝且旧数据不变。
 8. 关闭 popup 后恢复 100+ 标签，重新打开 popup 查看任务结果或“结果未确认”；确认系统没有自动重复恢复。
 
-发布前确认 `manifest.json` 只申请业务需要的 `tabs` 和 `storage` 权限，且 README 与实际行为一致。若当前 Chrome 对快捷键无法直接打开 popup，则文档和 UI 必须明确写出实际可行入口，不能宣称快捷键已经完成完整保存。
+发布前确认 `manifest.json` 只申请业务需要的 `tabs` 和 `storage` 权限，且 README 与实际行为一致。若当前 Chrome 对快捷键无法直接打开 popup，则 options 兜底页面和保存按钮必须可用；文档不能宣称快捷键已经绕过名称、范围和确认完成保存。
 
 ## Idempotence and Recovery
 
@@ -260,12 +337,13 @@ M3 评审记录：
     deleteSession(id: string): Promise<void>
     listSessions(query?: string): Promise<SavedSession[]>
     createRestorePlan(sessionId: string, mode: RestoreMode): Promise<RestorePlan>
-    runRestore(planId: string): Promise<RestoreResult>
+    startRestore(sessionId: string, mode: RestoreMode): Promise<RestoreTask>
+    getRestoreTask(taskId: string): Promise<RestoreTask>
     exportBackup(): Promise<BackupDocument>
     validateBackup(input: unknown): BackupValidation
     importBackup(document: BackupDocument): Promise<ImportResult>
 
-`SaveResult` 必须能表达成功、达到上限、无可恢复标签、被过滤标签和存储失败。`RestoreResult` 必须能表达新建窗口数量、成功标签数量、失败标签列表和中断/未确认状态。`BackupValidation` 必须在写入前给出完整错误列表。后台消息协议必须让 popup 在关闭后重新打开时通过任务 ID 查询状态，而不是依赖 popup 内存。
+`SaveResult` 必须能表达成功、达到上限、无可恢复标签、被过滤标签和存储失败。`RestoreTask` 表达异步恢复的任务 ID、session ID、窗口布局模式、进度、失败标签和 `running`、`completed`、`completed-with-errors`、`unconfirmed` 四种状态；`startRestore` 只创建任务并返回初始状态，`getRestoreTask` 负责查询状态。`BackupValidation` 必须在写入前给出完整错误列表。后台消息协议必须让 popup 在关闭后重新打开时通过任务 ID 查询状态，而不是依赖 popup 内存。
 
 ### 里程碑评审记录格式
 
@@ -284,3 +362,7 @@ M3 评审记录：
 2026-09-29 23:39 +08:00：首次创建本 ExecPlan。根据已确认的免费版设计，将空仓库的脚手架、版本化本地存储、多窗口保存/恢复、弹窗管理、JSON 备份/导入、文档同步和 Chrome 真实验收拆为六个可独立验证的里程碑，并加入仓库要求的中文三道评审门。后续每次修改必须同步更新 `Progress`、`Surprises & Discoveries`、`Decision Log` 和本节。
 2026-09-30 03:20 +08:00：完成 M1/M2 实现并通过最终三道中文 Gate。根据评审将混合标签保存改为后台预览令牌确认，令牌使用 `chrome.storage.session` 跨 service worker 保留；补充严格 UUID/ISO/非空标签校验、读写顺序、listener 契约、并发 claim、失败释放和容量边界测试。M2 的真实 popup UI、README 同步和 Chrome E2E 仍按后续里程碑执行。
 2026-09-30 04:42 +08:00：完成 M3 三道中文 Gate。根据 Gate 1 增加初始列表成功前置、确认过期清理和错误状态清理；根据 Gate 3 将超长主机名换行纳入窄弹窗保护，并把 M4 后台恢复改动保持为独立未提交范围，避免里程碑提交边界混淆。当前 M3 的真实 Chrome 验收仍留到 M6。
+2026-09-30 09:45 +08:00：完成 M5/M6 代码与文档修正。针对中文 Gate 1/2 的阻断意见，加入严格未知字段校验、大小写不敏感 UUID 去重、导入失败释放令牌、快捷键失败打开 options 的兜底和设置页保存入口；新增 6 个回归测试。自动验证达到 13 个测试文件、69 个测试通过，typecheck 通过；M5 三道最终复审和真实 Chrome 验收仍在自动检查后执行，不能把未运行的浏览器验收写成通过。
+2026-09-30 11:22 +08:00：M5/M6 最新独立 Gate 发现备份容量、提交时导入状态、恢复请求幂等与轮询、保存预览配额和大列表成本问题。代码加入摘要令牌、大备份往返、串行导入计数、恢复 `requestId`、5 MB 预览预算、32 MB 文件读取上限和按需详情渲染；最低 Chrome 版本改为 127。计划和中文验收同步为“待最终全量检查与 Gate，真实 Chrome 未验收”，避免旧测试数字和旧最低版本误导。
+2026-09-30 11:45 +08:00：Gate 1 复审指出 popup 在结构化错误时清空未知请求 ID、运行中再次点击使原轮询失效。新增 jsdom 开发依赖和三条真实 React/DOM 回归，两条先失败后修正，一条确认瞬时轮询错误后继续到完成。完整检查达到 15 文件/82 测试，生产依赖审计零漏洞；代码仍待最终三道 Gate，真实 Chrome 未验收。
+2026-09-30 12:16 +08:00：最终 Gate 2 用 800,000 个空窗口复现格式化备份超过 32 MiB，改为紧凑导出并新增实际 options Blob 回归，先失败后通过。全量达到 16 文件/83 测试；三道独立代码 Gate 全部通过。候选代码可提交，M6 实机验收仍未完成；创建中文交接，记录开发依赖风险与剩余验收队列。

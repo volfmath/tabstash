@@ -1,5 +1,15 @@
 import { captureSession, type CapturedSession, type WindowsApi } from '../lib/session-capture'
 import {
+  createRestorePlan,
+  createRunningRestoreTask,
+  executeRestorePlan,
+  type RestoreBrowserApi,
+  type RestoreTask,
+} from '../lib/restore'
+import { SessionRestoreTaskStore, type RestoreTaskStoreApi } from './restore-tasks'
+import { MemoryBackupPreviewCache, SessionBackupPreviewCache, type BackupPreviewCache } from './backup-previews'
+import { createBackupDocument, validateBackup, type BackupDocument } from '../lib/backup'
+import {
   InvalidSessionNameError,
   SessionNotFoundError,
   SessionStore,
@@ -22,12 +32,14 @@ import {
 
 const PREVIEW_TTL_MS = 5 * 60 * 1000
 const MAX_PREVIEWS = 20
+const MAX_PREVIEW_BYTES = 5 * 1024 * 1024
 
 interface PreviewRecord {
   capture: CapturedSession
   scope: Extract<BackgroundMessage, { type: 'save-session' }>['scope']
   expiresAt: number
   claimedAt?: number
+  size: number
 }
 
 export interface PreviewCache {
@@ -41,10 +53,11 @@ export class MemoryPreviewCache implements PreviewCache {
   private readonly records = new Map<string, PreviewRecord>()
 
   async put(capture: CapturedSession, scope: PreviewRecord['scope']): Promise<string> {
+    const size = previewSize(capture)
     this.prune()
-    this.trimToLimit()
+    while (this.records.size >= MAX_PREVIEWS || this.totalSize() + size > MAX_PREVIEW_BYTES) this.evictOldest()
     const token = crypto.randomUUID()
-    this.records.set(token, { capture, scope, expiresAt: Date.now() + PREVIEW_TTL_MS })
+    this.records.set(token, { capture, scope, expiresAt: Date.now() + PREVIEW_TTL_MS, size })
     return token
   }
 
@@ -63,7 +76,7 @@ export class MemoryPreviewCache implements PreviewCache {
   }
 
   async release(token: string, capture: CapturedSession, scope: PreviewRecord['scope']): Promise<void> {
-    this.records.set(token, { capture, scope, expiresAt: Date.now() + PREVIEW_TTL_MS })
+    this.records.set(token, { capture, scope, expiresAt: Date.now() + PREVIEW_TTL_MS, size: previewSize(capture) })
   }
 
   async complete(token: string): Promise<void> {
@@ -77,12 +90,14 @@ export class MemoryPreviewCache implements PreviewCache {
     }
   }
 
-  private trimToLimit(): void {
-    while (this.records.size >= MAX_PREVIEWS) {
+  private totalSize(): number {
+    return [...this.records.values()].reduce((total, record) => total + record.size, 0)
+  }
+
+  private evictOldest(): void {
       const oldest = [...this.records.entries()].sort(([, left], [, right]) => left.expiresAt - right.expiresAt)[0]
       if (!oldest) return
       this.records.delete(oldest[0])
-    }
   }
 }
 
@@ -96,9 +111,12 @@ export class SessionPreviewCache implements PreviewCache {
       const records = await this.readRecords()
       const now = Date.now()
       pruneRecords(records, now)
-      trimRecordsToLimit(records)
+      const size = previewSize(capture)
+      while (Object.keys(records).length >= MAX_PREVIEWS || totalPreviewSize(records) + size > MAX_PREVIEW_BYTES) {
+        evictOldestRecord(records)
+      }
       const token = crypto.randomUUID()
-      records[token] = { capture, scope, expiresAt: now + PREVIEW_TTL_MS }
+      records[token] = { capture, scope, expiresAt: now + PREVIEW_TTL_MS, size }
       await this.writeRecords(records)
       return token
     })
@@ -128,8 +146,9 @@ export class SessionPreviewCache implements PreviewCache {
     return enqueuePreviewOperation(async () => {
       const records = await this.readRecords()
       pruneRecords(records, Date.now())
-      records[token] = { capture, scope, expiresAt: Date.now() + PREVIEW_TTL_MS }
-      trimRecordsToLimit(records)
+      const size = previewSize(capture)
+      records[token] = { capture, scope, expiresAt: Date.now() + PREVIEW_TTL_MS, size }
+      while (Object.keys(records).length > MAX_PREVIEWS || totalPreviewSize(records) > MAX_PREVIEW_BYTES) evictOldestRecord(records)
       await this.writeRecords(records)
     })
   }
@@ -177,12 +196,19 @@ function pruneRecords(records: Record<string, PreviewRecord>, now: number): void
   }
 }
 
-function trimRecordsToLimit(records: Record<string, PreviewRecord>): void {
-  while (Object.keys(records).length >= MAX_PREVIEWS) {
-    const oldest = Object.entries(records).sort(([, left], [, right]) => left.expiresAt - right.expiresAt)[0]
-    if (!oldest) return
-    delete records[oldest[0]]
-  }
+function previewSize(value: unknown): number {
+  const size = new TextEncoder().encode(JSON.stringify(value)).byteLength
+  if (size > MAX_PREVIEW_BYTES) throw new StorageAccessError('保存预览超过 5 MB 临时缓存上限')
+  return size
+}
+
+function totalPreviewSize(records: Record<string, PreviewRecord>): number {
+  return Object.values(records).reduce((total, record) => total + (record.size ?? previewSize(record.capture)), 0)
+}
+
+function evictOldestRecord(records: Record<string, PreviewRecord>): void {
+  const oldest = Object.entries(records).sort(([, left], [, right]) => left.expiresAt - right.expiresAt)[0]
+  if (oldest) delete records[oldest[0]]
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -190,10 +216,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 const defaultPreviewCache = new MemoryPreviewCache()
+const defaultBackupPreviewCache = new MemoryBackupPreviewCache()
 
 export interface SessionStoreLike {
   loadState(): Promise<{ sessions: SavedSession[] }>
   addSession(session: SavedSession): Promise<{ sessions: SavedSession[] }>
+  importSessions?(sessions: SavedSession[]): Promise<{ addedSessionCount: number; skippedSessionCount: number }>
   renameSession(id: string, name: string): Promise<unknown>
   deleteSession(id: string): Promise<unknown>
 }
@@ -204,6 +232,31 @@ export interface BackgroundDependencies {
   createId: () => string
   now: () => Date
   previewCache?: PreviewCache
+  restoreApi?: RestoreBrowserApi
+  restoreTaskStore?: RestoreTaskStoreApi
+  activeRestoreTasks?: Set<string>
+  backupPreviewCache?: BackupPreviewCache
+}
+
+class RestoreUnavailableError extends Error {
+  constructor() {
+    super('恢复服务不可用')
+    this.name = 'RestoreUnavailableError'
+  }
+}
+
+class RestoreBusyError extends Error {
+  constructor() {
+    super('已有恢复任务正在运行，请等待其结束')
+    this.name = 'RestoreBusyError'
+  }
+}
+
+class RestoreTaskNotFoundError extends Error {
+  constructor(id: string) {
+    super(`找不到恢复任务: ${id}`)
+    this.name = 'RestoreTaskNotFoundError'
+  }
 }
 
 export async function handleMessage(
@@ -228,10 +281,142 @@ export async function handleMessage(
       case 'delete-session':
         await dependencies.store.deleteSession(message.id)
         return { ok: true }
+      case 'restore-session':
+        return await enqueueRestoreStart(() => startRestore(message.id, message.mode, message.requestId, dependencies))
+      case 'get-restore-task': {
+        const taskStore = dependencies.restoreTaskStore
+        if (!taskStore) throw new RestoreUnavailableError()
+        const task = await taskStore.get(message.taskId)
+        if (!task) throw new RestoreTaskNotFoundError(message.taskId)
+        return { ok: true, task }
+      }
+      case 'list-restore-tasks': {
+        const taskStore = dependencies.restoreTaskStore
+        if (!taskStore) throw new RestoreUnavailableError()
+        return { ok: true, tasks: await taskStore.list() }
+      }
+      case 'export-backup':
+        return await exportBackup(dependencies)
+      case 'preview-import':
+        return await previewImport(message.document, dependencies)
+      case 'import-backup':
+        return await importBackup(message.previewToken, message.document, dependencies)
     }
   } catch (error) {
     return toFailure(error)
   }
+}
+
+async function exportBackup(dependencies: BackgroundDependencies) {
+  const state = await dependencies.store.loadState()
+  return { ok: true as const, document: createBackupDocument(state.sessions) }
+}
+
+async function previewImport(document: unknown, dependencies: BackgroundDependencies) {
+  const state = await dependencies.store.loadState()
+  const validation = validateBackup(document, state.sessions)
+  if (!validation.valid) {
+    return {
+      ok: false as const,
+      code: 'invalid-backup' as const,
+      message: validation.errors.join('；'),
+      errors: validation.errors,
+    }
+  }
+  const previewToken = await (dependencies.backupPreviewCache ?? defaultBackupPreviewCache).put(document as import('../lib/backup').BackupDocument)
+  return { ok: true as const, validation, previewToken }
+}
+
+async function importBackup(previewToken: string, document: unknown, dependencies: BackgroundDependencies) {
+  const cache = dependencies.backupPreviewCache ?? defaultBackupPreviewCache
+  if (!await cache.claim(previewToken, document)) {
+    return { ok: false as const, code: 'backup-preview-expired' as const, message: '导入预览已过期或文件已变化，请重新选择文件' }
+  }
+  let imported = false
+  try {
+    const state = await dependencies.store.loadState()
+    const validation = validateBackup(document, state.sessions)
+    if (!validation.valid) {
+      return {
+        ok: false as const,
+        code: 'invalid-backup' as const,
+        message: validation.errors.join('；'),
+        errors: validation.errors,
+      }
+    }
+    if (!dependencies.store.importSessions) throw new StorageAccessError('导入服务不可用')
+    const result = await dependencies.store.importSessions((document as BackupDocument).sessions)
+    imported = true
+    return {
+      ok: true as const,
+      addedSessionCount: result.addedSessionCount,
+      skippedSessionCount: result.skippedSessionCount,
+    }
+  } finally {
+    if (imported) {
+      await cache.complete(previewToken).catch(() => undefined)
+    } else {
+      await cache.release(previewToken).catch(() => undefined)
+    }
+  }
+}
+
+async function startRestore(
+  sessionId: string,
+  mode: 'preserve-windows' | 'merge-window',
+  requestId: string,
+  dependencies: BackgroundDependencies,
+) {
+  if (!dependencies.restoreApi || !dependencies.restoreTaskStore) throw new RestoreUnavailableError()
+  const existing = await dependencies.restoreTaskStore.get(requestId)
+  if (existing) {
+    if (existing.sessionId !== sessionId || existing.mode !== mode) {
+      return { ok: false as const, code: 'invalid-message' as const, message: '恢复请求 ID 已用于其他会话或模式' }
+    }
+    return { ok: true as const, task: existing }
+  }
+  const existingTasks = await dependencies.restoreTaskStore.list()
+  if (existingTasks.some((task) => task.status === 'running')) throw new RestoreBusyError()
+  const state = await dependencies.store.loadState()
+  const session = state.sessions.find((candidate) => candidate.id === sessionId)
+  if (!session) throw new SessionNotFoundError(sessionId)
+
+  const plan = createRestorePlan(session, mode, dependencies.createId)
+  const task = createRunningRestoreTask(plan, requestId, dependencies.now().getTime())
+  await dependencies.restoreTaskStore.save(task)
+  dependencies.activeRestoreTasks?.add(task.id)
+  void executeRestorePlan(
+    plan,
+    dependencies.restoreApi,
+    dependencies.restoreTaskStore,
+    dependencies.createId,
+    () => dependencies.now().getTime(),
+    task,
+  ).catch(async (error: unknown) => {
+    task.status = 'unconfirmed'
+    task.updatedAt = dependencies.now().toISOString()
+    task.failures = [...task.failures, {
+      url: '',
+      title: '恢复任务',
+      message: error instanceof Error ? error.message : '恢复任务意外中断',
+    }]
+    try {
+      await dependencies.restoreTaskStore?.save(task)
+    } catch {
+      // The task may be unavailable after a storage failure; do not retry browser operations.
+    }
+  }).finally(() => {
+    dependencies.activeRestoreTasks?.delete(task.id)
+  })
+  return { ok: true as const, task }
+}
+
+let restoreStartQueue: Promise<void> = Promise.resolve()
+
+function enqueueRestoreStart<T>(operation: () => Promise<T>): Promise<T> {
+  const task = restoreStartQueue.then(operation, operation)
+  restoreStartQueue = task.then(() => undefined, () => undefined)
+  return task
 }
 
 async function saveSession(
@@ -355,6 +540,15 @@ function toFailure(error: unknown): MessageFailure {
   if (error instanceof StorageAccessError) {
     return { ok: false, code: 'storage-error', message: error.message }
   }
+  if (error instanceof RestoreUnavailableError) {
+    return { ok: false, code: 'restore-unavailable', message: error.message }
+  }
+  if (error instanceof RestoreBusyError) {
+    return { ok: false, code: 'restore-busy', message: error.message }
+  }
+  if (error instanceof RestoreTaskNotFoundError) {
+    return { ok: false, code: 'restore-task-not-found', message: error.message }
+  }
   return { ok: false, code: 'unknown-error', message: '操作失败，请稍后重试' }
 }
 
@@ -372,6 +566,7 @@ export function createBackgroundDependencies(): BackgroundDependencies {
       }),
   }
 
+  const activeRestoreTasks = new Set<string>()
   return {
     store: new SessionStore(createChromeStorage()),
     windowsApi,
@@ -382,5 +577,12 @@ export function createBackgroundDependencies(): BackgroundDependencies {
       : (() => {
           throw new StorageAccessError('Chrome 临时会话存储不可用')
         })(),
+    restoreTaskStore: new SessionRestoreTaskStore(chrome.storage.session, Date.now, (id) => activeRestoreTasks.has(id)),
+    activeRestoreTasks,
+    backupPreviewCache: new SessionBackupPreviewCache(chrome.storage.session),
+    restoreApi: {
+      createWindow: async (url) => chrome.windows.create({ ...(url ? { url } : {}), type: 'normal' }),
+      createTab: async ({ windowId, url }) => chrome.tabs.create({ windowId, url }),
+    },
   }
 }

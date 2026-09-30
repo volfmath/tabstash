@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { handleMessage, type BackgroundDependencies, type PreviewCache } from '../src/background/handler'
+import { MemoryBackupPreviewCache } from '../src/background/backup-previews'
 import { StorageAccessError } from '../src/lib/storage'
 import type { SavedSession, StoredState } from '../src/types/session'
 import type { WindowsApi } from '../src/lib/session-capture'
@@ -11,6 +12,12 @@ function makeStore(initial: StoredState = { schemaVersion: 1, sessions: [] }) {
     addSession: vi.fn(async (session: SavedSession) => {
       state = { ...state, sessions: [...state.sessions, session] }
       return state
+    }),
+    importSessions: vi.fn(async (sessions: SavedSession[]) => {
+      const existingIds = new Set(state.sessions.map((session) => session.id.toLowerCase()))
+      const added = sessions.filter((session) => !existingIds.has(session.id.toLowerCase()))
+      state = { ...state, sessions: [...state.sessions, ...added] }
+      return { addedSessionCount: added.length, skippedSessionCount: sessions.length - added.length }
     }),
     renameSession: vi.fn(async (id: string, name: string) => {
       state = { ...state, sessions: state.sessions.map((session) => (session.id === id ? { ...session, name } : session)) }
@@ -241,5 +248,86 @@ describe('handleMessage', () => {
     await expect(handleMessage({ type: 'delete-session', id: 'id' }, dependencies)).resolves.toEqual({ ok: true })
     expect(dependencies.store.renameSession).toHaveBeenCalledWith('id', '新名称')
     expect(dependencies.store.deleteSession).toHaveBeenCalledWith('id')
+  })
+
+  it('exports a backup and imports it only after preview confirmation', async () => {
+    const dependencies = makeDependencies()
+    const session: SavedSession = {
+      id: '123e4567-e89b-42d3-a456-426614174000',
+      name: '备份会话',
+      createdAt: '2026-09-30T00:00:00.000Z',
+      windows: [{ tabs: [{ url: 'https://backup.test', title: 'Backup' }] }],
+    }
+    vi.mocked(dependencies.store.loadState).mockResolvedValue({ sessions: [session] })
+
+    const exported = await handleMessage({ type: 'export-backup' }, dependencies)
+    expect(exported).toMatchObject({ ok: true, document: { schemaVersion: 1, sessions: [session] } })
+
+    const preview = await handleMessage({ type: 'preview-import', document: { ok: true } }, dependencies)
+    expect(preview).toMatchObject({ ok: false, code: 'invalid-backup', errors: expect.any(Array) })
+
+    const document = { schemaVersion: 1, exportedAt: '2026-09-30T00:00:00.000Z', sessions: [session] }
+    const validPreview = await handleMessage({ type: 'preview-import', document }, { ...dependencies, store: makeStore() })
+    expect(validPreview).toMatchObject({ ok: true, validation: { valid: true } })
+    if (!validPreview.ok || !('previewToken' in validPreview)) throw new Error('expected import preview')
+
+    const target = makeDependencies()
+    const result = await handleMessage({ type: 'import-backup', previewToken: validPreview.previewToken, document }, target)
+    expect(result).toEqual({ ok: true, addedSessionCount: 1, skippedSessionCount: 0 })
+    expect(target.store.importSessions).toHaveBeenCalledWith([session])
+  })
+
+  it('imports an exported backup larger than 2 MB after preview confirmation', async () => {
+    const source = makeDependencies()
+    const session: SavedSession = {
+      id: '123e4567-e89b-42d3-a456-426614174000',
+      name: 'Large',
+      createdAt: '2026-09-30T00:00:00.000Z',
+      windows: [{ tabs: [{ url: 'https://example.test', title: 'x'.repeat(2 * 1024 * 1024) }] }],
+    }
+    vi.mocked(source.store.loadState).mockResolvedValue({ sessions: [session] })
+    const exported = await handleMessage({ type: 'export-backup' }, source)
+    if (!exported.ok || !('document' in exported)) throw new Error('expected export')
+
+    const target = makeDependencies()
+    const preview = await handleMessage({ type: 'preview-import', document: exported.document }, target)
+    if (!preview.ok || !('previewToken' in preview)) throw new Error('expected preview')
+
+    await expect(handleMessage({ type: 'import-backup', previewToken: preview.previewToken, document: exported.document }, target))
+      .resolves.toMatchObject({ ok: true, addedSessionCount: 1 })
+    expect(target.store.importSessions).toHaveBeenCalledWith([session])
+  })
+
+  it('keeps an import preview retryable when the storage write fails', async () => {
+    const backupPreviewCache = new MemoryBackupPreviewCache()
+    const document = {
+      schemaVersion: 1 as const,
+      exportedAt: '2026-09-30T00:00:00.000Z',
+      sessions: [{
+        id: '123e4567-e89b-42d3-a456-426614174000',
+        name: '备份会话',
+        createdAt: '2026-09-30T00:00:00.000Z',
+        windows: [{ tabs: [{ url: 'https://backup.test', title: 'Backup' }] }],
+      }],
+    }
+    const source = { ...makeDependencies(), backupPreviewCache }
+    const preview = await handleMessage({ type: 'preview-import', document }, source)
+    if (!preview.ok || !('previewToken' in preview)) throw new Error('expected import preview')
+
+    const target = makeDependencies()
+    target.backupPreviewCache = backupPreviewCache
+    target.store.importSessions = vi.fn(async () => {
+      throw new StorageAccessError('写入本地会话失败')
+    })
+
+    await expect(handleMessage({ type: 'import-backup', previewToken: preview.previewToken, document }, target)).resolves.toMatchObject({
+      ok: false,
+      code: 'storage-error',
+    })
+    await expect(handleMessage({ type: 'import-backup', previewToken: preview.previewToken, document }, target)).resolves.toMatchObject({
+      ok: false,
+      code: 'storage-error',
+    })
+    expect(await target.store.loadState()).toEqual({ schemaVersion: 1, sessions: [] })
   })
 })

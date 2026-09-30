@@ -22,6 +22,30 @@ const capture = {
 }
 
 describe('SessionPreviewCache', () => {
+  it('evicts the oldest preview before exceeding the session cache budget', async () => {
+    const cache = new SessionPreviewCache(new FakeSessionStorage())
+    const largeCapture = {
+      windows: [{ tabs: [{ url: 'https://example.test', title: 'x'.repeat(3 * 1024 * 1024) }] }],
+      includedTabCount: 1,
+      excludedTabs: [],
+    }
+    const first = await cache.put(largeCapture, 'current-window')
+    const second = await cache.put(largeCapture, 'current-window')
+
+    await expect(cache.claim(first, 'current-window')).resolves.toBeUndefined()
+    await expect(cache.claim(second, 'current-window')).resolves.toEqual(largeCapture)
+  })
+
+  it('rejects one preview larger than the cache budget with an actionable error', async () => {
+    const cache = new SessionPreviewCache(new FakeSessionStorage())
+    const oversized = {
+      windows: [{ tabs: [{ url: 'https://example.test', title: 'x'.repeat(6 * 1024 * 1024) }] }],
+      includedTabCount: 1,
+      excludedTabs: [],
+    }
+
+    await expect(cache.put(oversized, 'current-window')).rejects.toThrow('保存预览超过 5 MB 临时缓存上限')
+  })
   it('keeps a preview available across cache instances', async () => {
     const storage = new FakeSessionStorage()
     const firstWorker = new SessionPreviewCache(storage)

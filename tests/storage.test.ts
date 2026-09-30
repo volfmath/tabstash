@@ -155,4 +155,29 @@ describe('SessionStore', () => {
       sessions: [{ ...makeSession('one'), name: 'Renamed' }],
     })
   })
+
+  it('imports a validated batch atomically', async () => {
+    const storage = new FakeStorage()
+    const store = new SessionStore(storage)
+    await store.addSession(makeSession('existing'))
+
+    await store.importSessions([makeSession('one'), makeSession('two')])
+
+    await expect(store.loadState()).resolves.toEqual({
+      schemaVersion: 1,
+      sessions: [makeSession('existing'), makeSession('one'), makeSession('two')],
+    })
+  })
+
+  it('calculates skipped IDs against the state at commit time', async () => {
+    const store = new SessionStore(new FakeStorage())
+    const existing = makeSession('existing')
+    await store.addSession(existing)
+    await store.deleteSession(existing.id)
+
+    const result = await store.importSessions([existing, makeSession('new')])
+
+    expect(result).toMatchObject({ addedSessionCount: 2, skippedSessionCount: 0 })
+    expect(result.state.sessions).toEqual([existing, makeSession('new')])
+  })
 })
