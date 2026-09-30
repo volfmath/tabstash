@@ -2,7 +2,7 @@
 
 ## 目标与当前状态
 
-用户决定先交付免费版，要求中英文、图标、紧凑弹窗、反馈渠道，并已授权源码和产物提交推送 Gitee。上述实现、三道独立审查和本地自动验收已完成，剩余 Git 提交和推送。没有发布商店，没有新增支付、账号、云同步或权限。
+用户决定先交付免费版，要求中英文、图标、紧凑弹窗、反馈渠道，并已授权源码和产物提交推送 Gitee。本轮已完成：源码、中文文档和 0.2.0 ZIP 以 `b324edd` 推送 Gitee main，远端与本地提交号一致。三道独立审查和本地自动验收通过，临时 Vite 服务已关闭。没有发布商店，没有新增支付、账号、云同步或权限。
 
 ## 修改范围
 
@@ -16,7 +16,7 @@
 
 ## 剩余工作与子任务队列
 
-- [ ] Git 交付：提交源码、中文文档和 ZIP，推送 origin/main，核对远端提交号、工作树状态；更新本文件与 ExecPlan 交付状态。
+- [x] Git 交付：`b324eddf5f390ab9e1f2ca8f5303b85da065ba47` 已推送 origin/main，远端一致，工作树干净；本交接与 ExecPlan 的最终记录由后续文档提交补充。最终 HEAD 以 git log 和远端查询为准。
 - [ ] 后续首发检查：目标用户 Chrome 的 100+ 标签、worker 回收和默认快捷键；范围与方法见验收记录。该项是环境相关的后续手工工作。
 
 ## 风险与阻塞
@@ -27,4 +27,4 @@
 
 推荐技能：`verification-before-completion`、`codex-exec-plans`；发现问题先用 `bugfix`。
 
-    继续 Tabstash 0.2.0，先读 docs/handoffs/2026-09-30-launch-polish.zh-CN.md 和本轮 ExecPlan。实现、三个 Gate、118 项测试和真实扩展验收已完成。先核对 git status、git log、远端 origin/main，从队列第一个未完成项继续；不要重做已验证功能，不提交 artifacts、node_modules、profile、秘密，不发布商店。
+    继续 Tabstash，先读 docs/handoffs/2026-09-30-launch-polish.zh-CN.md 和本轮 ExecPlan。0.2.0 实现、三个 Gate、118 项测试、真实扩展验收和源码/ZIP 推送已完成。先核对 git status、git log、远端 origin/main，再结合用户新要求处理后续手工首发检查；不要重做已交付功能，不提交 artifacts、node_modules、profile、秘密，不自动发布商店。
