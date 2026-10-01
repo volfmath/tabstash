@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Privacy policy for the Tabstash browser extension.">
+    <title>Tabstash Privacy Policy</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Arial, Helvetica, sans-serif;
+        color: #202124;
+        background: #fff;
+      }
+
+      body {
+        max-width: 48rem;
+        margin: 0 auto;
+        padding: 2rem 1.25rem 4rem;
+        line-height: 1.65;
+      }
+
+      h1, h2 { line-height: 1.25; }
+      h1 { font-size: 2rem; }
+      h2 { margin-top: 2rem; font-size: 1.25rem; }
+      a { color: #075e55; }
+      code { overflow-wrap: anywhere; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Tabstash Privacy Policy</h1>
+      <p>Effective date: 2026-10-01</p>
+      <p>This policy applies to the free Tabstash browser extension, version 0.2.0 and later versions that link to this document.</p>
+
+      <h2>Summary</h2>
+      <p>Tabstash is a local browser-session manager. It does not operate a backend, create accounts, show ads, use analytics, or sell or share user data.</p>
+
+      <h2>Information handled by the extension</h2>
+      <p>Tabstash handles information only when the user starts an action:</p>
+      <ul>
+        <li>When saving a session, it reads the URL and title of tabs in the selected current window or selected ordinary windows.</li>
+        <li>It stores session names, tab URLs, tab titles, window structure, and language preference in <code>storage.local</code>. Short-lived save previews, imported backup previews, and restore task state are kept in <code>storage.session</code>.</li>
+        <li>When the user exports or imports a JSON backup, the file is read or written locally by the browser. It is not uploaded to Tabstash or to a Tabstash server.</li>
+      </ul>
+      <p>Tabstash does not save cookies, page contents, browsing history, or login state. Private-window tabs and unsupported pages are not persisted in a session, although their URL and title can be read briefly while the user is shown the save preview. Only <code>http:</code> and <code>https:</code> tabs are included in a session. URLs may contain sensitive query parameters, so exported backups should be treated as sensitive files.</p>
+
+      <h2>Sharing and transmission</h2>
+      <p>Tabstash does not transmit handled information to a developer-controlled server, third-party analytics service, or advertising network. The extension has no host permissions, content scripts, or remote code.</p>
+      <p>The Settings page contains links to the public Gitee repository and issue tracker. Those pages open only after the user clicks a link; the extension does not attach session, tab, or URL data to those links. Gitee's own privacy policy applies after the user leaves the extension.</p>
+      <p>The public issue tracker is not a private support channel. Before opening an issue, remove exported backup JSON, cookies, login links, access tokens, session names, tab titles, URLs (including sensitive query parameters), and personal information visible in screenshots or logs. Share only the smallest reproduction details needed to investigate a problem.</p>
+
+      <h2>Retention and deletion</h2>
+      <p>Saved sessions and language preference remain in the browser's persistent <code>storage.local</code> until the user deletes them, clears extension data, or uninstalls the extension. The user can export a backup, delete individual sessions, or clear the browser's extension data through browser settings. Preview tokens and imported backup previews are short-lived and expire after their workflow timeout. Restore task summaries are kept temporarily in <code>storage.session</code>, at most ten entries, so the user can see completion, partial failure, or an unconfirmed result; a stale running task is marked unconfirmed rather than automatically retried.</p>
+
+      <h2>Permissions</h2>
+      <ul>
+        <li><code>tabs</code>: read tab URLs and titles for a user-requested save and create tabs during a user-requested restore.</li>
+        <li><code>storage</code>: store persistent sessions and preferences in <code>storage.local</code>, and short-lived previews and restore task state in <code>storage.session</code>.</li>
+      </ul>
+
+      <h2>Changes and contact</h2>
+      <p>This policy may be updated when Tabstash's data practices change. The current version is always published at this URL. Questions, bug reports, and privacy requests can be submitted through the <a href="https://gitee.com/moreandmoregames/tabstash/issues/">public issue tracker</a>.</p>
+    </main>
+  </body>
+</html>

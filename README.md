@@ -61,7 +61,7 @@ JSON 备份包含网址明文和可能敏感的查询参数，请像保存密码
 
 扩展只申请 `storage` 和 `tabs` 权限：`tabs` 用于读取用户明确保存的窗口和标签信息，`storage` 用于保存本地会话和短期任务/预览状态。没有主机权限、内容脚本、网络后端或 `storage.sync`。
 
-公开隐私政策见 [`docs/privacy-policy.md`](docs/privacy-policy.md)；仓库现为公开项目，商店使用的隐私政策链接为 <https://gitee.com/moreandmoregames/tabstash/blob/main/docs/privacy-policy.md>。用户反馈入口为 <https://gitee.com/moreandmoregames/tabstash/issues/>。
+公开隐私政策见 [`docs/privacy-policy.md`](docs/privacy-policy.md)；商店使用的 HTML 隐私政策链接为 <https://volfmath.github.io/tabstash/privacy-policy.html>。用户反馈入口为 <https://gitee.com/moreandmoregames/tabstash/issues/>。
 
 ## 测试
 

@@ -37,7 +37,7 @@ Add-ons。当前已用本机 Edge Chromium 可执行文件加载该包完成隔�
 - 单一用途：Save and restore the user's browser tab sessions locally.
 - 支持链接：<https://gitee.com/moreandmoregames/tabstash>
 - 用户反馈：<https://gitee.com/moreandmoregames/tabstash/issues/>
-- 隐私政策：<https://gitee.com/moreandmoregames/tabstash/blob/main/docs/privacy-policy.md>
+- 隐私政策：<https://volfmath.github.io/tabstash/privacy-policy.html>
 
 ### English listing
 
@@ -144,7 +144,7 @@ Chrome 的运行时验收和商店提交同样需要分别确认：
 - Product category：`Productivity`
 - Support URL：Gitee repository home
 - Feedback URL：Gitee Issues
-- Privacy policy URL：Gitee `docs/privacy-policy.md`
+- Privacy policy URL：GitHub Pages `privacy-policy.html`
 - Package：`releases/tabstash-free-mvp-0.2.0.zip`
 
 ### Edge 独立手工检查
