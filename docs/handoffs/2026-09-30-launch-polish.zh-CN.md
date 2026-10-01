@@ -21,7 +21,7 @@
 
 ## 剩余工作与子任务队列
 
-- [ ] 本轮 Git 交付：提交并推送本交接、ExecPlan、公开反馈修正、隐私与商店文档及 0.2.0 ZIP；随后核对 `git ls-remote origin refs/heads/main`、远端 raw ZIP SHA256 和干净工作树，并将最终提交号写回本节。
+- [x] 本轮 Git 交付：`b2d4e2395c0b71ddd79d7df497377a00d5ee4fe1` 已推送；`git ls-remote origin refs/heads/main` 与本地一致，远端 raw ZIP 为 90,380 字节且 SHA256 为 `B8D3BEC15556BC324661D34CDCF1134EF3F4DF76184B65449C2B0A6D02AA344D`，工作树干净。
 - [ ] 后续首发检查：目标用户 Chrome 的 100+ 标签、worker 回收和默认快捷键；范围与方法见验收记录。该项是环境相关的后续手工工作。
 - [ ] 商店首发检查：账号持有人分别完成 Chrome Web Store 和 Edge Add-ons 的登录、表单、上传与审核提交；Edge 必须按 `docs/release/2026-10-01-store-submission.zh-CN.md` 的独立清单执行。
 
