@@ -29,6 +29,8 @@
 - [x] (2026-10-01) 完成最终全套验收：23 个测试文件/124 项通过，类型检查、生产构建、`git diff --check`、24 个视觉场景、四个图标解码和真实隔离 Chrome 扩展验收通过，扩展 `errors: []`。
 - [x] (2026-10-01) 重打包并核对 0.2.0 ZIP：17 个条目与 `dist` 逐项 SHA256 一致，根目录包含 `manifest.json`。
 - [x] (2026-10-01) 以 `629dc54` 提交并推送本轮源码、文档和 0.2.0 ZIP；`git ls-remote origin main` 已核对为 `629dc5428fe3b514f594bf2bc58ad07a693746b1`。
+- [x] (2026-10-01) 准备 Chrome Web Store / Edge Add-ons 双平台提交材料：隐私政策、双语商店文案、权限说明和 1280x800 英文截图；同一 0.2.0 ZIP 可复用。
+- [x] (2026-10-01) 用本机 Edge Chromium 可执行文件重新运行隔离扩展验收，保存、恢复、备份、语言、容量和反馈流程通过，`errors: []`；仅作为运行时兼容证据，不代替商店审核。
 
 ## Surprises & Discoveries
 
@@ -75,7 +77,7 @@ Gate 2 找到 `key={locale}` 重挂载丢失业务状态、异步回调和提示
 
 保存预览取代表单和列表区域，用户确认或返回后继续；恢复多窗口时显示选择步骤。恢复任务使用现有后台任务标识和轮询机制，完成信息可收起，错误与未确认状态不能丢失。完整管理页仍复用相同后台命令，跨页修改通过本地存储变化刷新列表，语言偏好不能触碰会话数据。
 
-完成后运行下述检查，三个真实子代理分别只读评审不同风险面。主代理读取结论、修复发现并请求复核后，才勾选里程碑完成。打包保留根目录 manifest，加入双语资源及实际图标，更新说明和手工验收边界。最新证据为 23 个测试文件、118 个测试通过，类型检查和生产构建成功，图标逐像素解码成功，24 个视觉场景成功，隔离 Chrome 扩展流程成功且 `errors: []`。管理页搜索、重命名、标签详情、删除确认均由真实扩展脚本操作验证。
+完成后运行下述检查，三个真实子代理分别只读评审不同风险面。主代理读取结论、修复发现并请求复核后，才勾选里程碑完成。打包保留根目录 manifest，加入双语资源及实际图标，更新说明和手工验收边界。最新证据为 23 个测试文件、124 个测试通过，类型检查和生产构建成功，图标逐像素解码成功，24 个视觉场景成功，隔离 Chrome/Edge 扩展流程成功且 `errors: []`。管理页搜索、重命名、标签详情、删除确认均由真实扩展脚本操作验证。
 
 ## Concrete Steps
 
@@ -92,7 +94,7 @@ Gate 2 找到 `key={locale}` 重挂载丢失业务状态、异步回调和提示
 
 视觉检查在另一个终端先启动 `npm run dev -- --host 127.0.0.1 --port 4173`，然后运行 `node scripts/visual-check.mjs`。如端口被占用，选择空闲端口并设置 `TABSTASH_PREVIEW_URL`。预期打印 24 个场景且全部 `overflowX:false`、`missingImages:0`；检查后关闭该临时服务。真实扩展脚本不依赖 Vite，生产加载只需 `dist`。
 
-PowerShell 打包命令为 `Compress-Archive -Path dist/* -DestinationPath releases/tabstash-free-mvp-0.2.0.zip -Force`。ZIP 根必须包含 manifest，条目集合和每条目 SHA256 必须与 dist 完全相同。本轮使用 .NET ZipArchive 逐条读取并与 `Get-FileHash` 比较，17 条全部相等，无开发依赖、测试、日志或临时 profile。
+发布包用 .NET `ZipArchive` 写入标准正斜杠条目。ZIP 根必须包含 manifest，条目集合和每条目 SHA256 必须与 dist 完全相同。本轮使用 .NET ZipArchive 逐条读取并与 `Get-FileHash` 比较，17 条全部相等，无开发依赖、测试、日志或临时 profile。
 
 前端使用 `lucide-react`；开发工具使用 Sharp 验证与生成 PNG，Playwright 自动打开隔离 Chromium 并截图。依赖由主代理统一安装，禁止并行修改 package-lock。浏览器脚本启动独立临时配置，不访问用户的日常浏览器数据。实际结果、命令与截图位置在执行后写入验收记录。
 
@@ -115,7 +117,7 @@ PowerShell 打包命令为 `Compress-Archive -Path dist/* -DestinationPath relea
 
 产物为 `releases/tabstash-free-mvp-0.2.0.zip`，中文验收记录位于 `docs/verification/`，交接位于 `docs/handoffs/`。截图与临时浏览器数据保存在被忽略的本地目录，只提交必要演示图片和可复现脚本。
 
-0.2.0 ZIP 最新为 90,379 字节，SHA256 为 `8A5821344991C4CA6EB26F851BF9498AB8FC6EE79C032CF5CF79E0FD688005AD`。旧 0.1.0 ZIP 原样保留。最新真实扩展检查额外覆盖英文留空保存生成 `Session 1` 后清理临时会话，最终 `errors: []`。
+0.2.0 ZIP 最新为 90,379 字节，SHA256 为 `9BA98BC673CCBB4F40A6CDD4F57871760E4F08F0ED94198D094E42337589F701`。ZIP 条目使用标准正斜杠路径，旧 0.1.0 ZIP 原样保留。最新真实扩展检查额外覆盖英文留空保存生成 `Session 1` 后清理临时会话，最终 `errors: []`。
 
 上一轮 Gate 结论保持有效：Gate 1（Mendel）确认语言切换、恢复未知 ID 和导入异常分层；本轮进一步发现并阻断了自动编号的并发竞态，已将编号分配下沉到 `SessionStore` 串行写队列并补测。Gate 2（Lovelace）首次阻断 `suggestedName` 必填与旧后台兼容要求不一致；改为可选并补充 `BackgroundResponse` 旧响应类型回归后复核通过，且确认 Popup 固定预览 locale。Gate 3（Hilbert）通过：普通保存、恢复和导入路径未被污染，无新增权限、无无界缓存或大范围写入；仅观察到预览编号在确认前可能变化，但最终写入会重新分配，数据正确性不受影响。三道 Gate 均由真实独立子代理只读审查并记录中文结论。
 

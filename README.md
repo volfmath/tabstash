@@ -1,6 +1,6 @@
 # Tabstash
 
-Tabstash 是一个 Chrome 扩展，用于把当前浏览器工作现场保存为本地会话，并在之后恢复到新窗口。免费版优先保证主动保存、可见结果和本地数据可控。
+Tabstash 是一个适用于 Chrome 和 Edge Chromium 的扩展，用于把当前浏览器工作现场保存为本地会话，并在之后恢复到新窗口。免费版优先保证主动保存、可见结果和本地数据可控。
 
 ## 免费版功能
 
@@ -35,9 +35,9 @@ Tabstash 是一个 Chrome 扩展，用于把当前浏览器工作现场保存为
 
 ## 安装和开发
 
-直接测试可下载 [0.2.0 安装包](releases/tabstash-free-mvp-0.2.0.zip)，解压后在 `chrome://extensions/` 启用“开发者模式”，选择“加载已解压的扩展程序”并选中含 `manifest.json` 的目录。升级已有安装时先导出备份，再将新包覆盖到原加载目录并点击扩展的“重新加载”；加载新目录可能产生不同扩展 ID，从而无法看到原本地会话。
+直接测试可下载 [0.2.0 安装包](releases/tabstash-free-mvp-0.2.0.zip)，解压后在 `chrome://extensions/` 或 `edge://extensions/` 启用“开发者模式”，选择“加载已解压的扩展程序”并选中含 `manifest.json` 的目录。升级已有安装时先导出备份，再将新包覆盖到原加载目录并点击扩展的“重新加载”；加载新目录可能产生不同扩展 ID，从而无法看到原本地会话。
 
-环境要求：Node.js 20.9 或更高版本、npm，以及 Chrome 127 或更高版本（发布验收仍以当前稳定版为准）。
+环境要求：Node.js 20.9 或更高版本、npm，以及 Chrome 127 或更高版本或当前稳定版 Edge（发布验收仍以目标商店要求为准）。
 
 ```powershell
 npm install
@@ -47,7 +47,7 @@ npm run build
 node scripts/verify-icons.mjs
 ```
 
-构建后打开 `chrome://extensions/`，启用“开发者模式”，选择“加载已解压的扩展程序”，并选择仓库中的 `dist` 目录。
+构建后打开 `chrome://extensions/` 或 `edge://extensions/`，启用“开发者模式”，选择“加载已解压的扩展程序”，并选择仓库中的 `dist` 目录。
 
 ## 使用流程
 
@@ -60,6 +60,8 @@ JSON 备份包含网址明文和可能敏感的查询参数，请像保存密码
 ## 权限和隐私
 
 扩展只申请 `storage` 和 `tabs` 权限：`tabs` 用于读取用户明确保存的窗口和标签信息，`storage` 用于保存本地会话和短期任务/预览状态。没有主机权限、内容脚本、网络后端或 `storage.sync`。
+
+公开隐私政策见 [`docs/privacy-policy.md`](docs/privacy-policy.md)；提交商店时使用公开 Gitee 链接：<https://gitee.com/moreandmoregames/tabstash/blob/main/docs/privacy-policy.md>。
 
 ## 测试
 
