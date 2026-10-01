@@ -41,7 +41,7 @@
 - [x] (2026-10-01) 最新全套测试 23 文件/134 项通过，类型检查、生产构建、图标验证及窄屏/双语视觉验收通过；Gate 1 独立复审通过。
 - [x] (2026-10-01) Gate 1 逻辑反方复审通过；Gate 3 影响面/性能复审在生产 ZIP 重建后通过，独立核实 17/17 SHA256、无开发标记/localhost、无新增权限或网络行为。
 - [x] (2026-10-01) Gate 2 设计一致性复审通过：生产 dist/ZIP 17/17 SHA256 一致、版本和哈希文档一致、GitHub feedback 已进入生产包、免费版边界未漂移；三道 Gate 均通过。
-- [ ] (2026-10-01) 提交并推送 0.2.1 源码与 ZIP 到 GitHub、Gitee；推送后核对两个远端 main 和 GitHub Pages 隐私政策。
+- [x] (2026-10-01) 以 `e17e2b1` 提交并推送 0.2.1 源码、文档和 ZIP 到 GitHub、Gitee；两个远端 `main` 均核对为 `e17e2b10baebd716b5b03e2ee2d26b46d7e501f9`，GitHub Issues、Pages 隐私政策和公开 ZIP 均 HTTP 200。
 
 ## Surprises & Discoveries
 
@@ -168,3 +168,4 @@ Gate 2 找到 `key={locale}` 重挂载丢失业务状态、异步回调和提示
 修订记录：2026-10-01，依据公开仓库收尾的三道独立中文 Gate 更新交付状态。Gate 1、Gate 2、Gate 3 均通过。重新运行 `npm test -- --run`（46 个文件、248 项通过，含被 Vitest 扫描的忽略镜像目录）、`npm exec vitest -- run --dir tests`（23 个文件、124 项通过）、`npm run typecheck`、`npm run build`、`node scripts/verify-icons.mjs dist`、`node scripts/extension-check.mjs`（`errors: []`）、`git diff --check`，并验证 ZIP 17/17 SHA256 一致及四个 Gitee 地址匿名 HTTP 200。功能与安装包提交 `b2d4e2395c0b71ddd79d7df497377a00d5ee4fe1` 已推送，后续文档专用提交已推送，远端公开 ZIP 哈希与本地一致，工作树干净。
 
 修订记录：2026-10-01，准备 0.2.1 更新包期间按用户要求逐项审查会话、备份、语言和反馈提示；Gate 1 独立复审发现恢复任务和语言偏好保存错误可能混入底层异常语言，以及自动名称预览不随语言变化，均已加回归测试并修复。Gate 3 首次审查阻止旧 ZIP，确认其误含 CRXJS DEV MODE；随后以 `npm run build` 重新生成生产 dist 和 ZIP。最终包为 17 个文件/90,557 字节、SHA256 `7395EE7071EE2142FCE14E974036F95BE52EA73AEDD160C9EE77438086441F99`。Gate 1、Gate 2、Gate 3 复审全部通过；Gate 3 独立核实 ZIP 与 dist 17/17 SHA256 一致、无 localhost/dev 标记、无额外权限/网络/常驻任务。最新自动测试为 23 文件/134 项，typecheck、build、四图标和 24 个中英视觉视口通过；真实隔离 Chromium 扩展流程含英文取消与中文确认原生删除弹窗并返回 `errors: []`。当前仅剩提交推送和远端核对。
+修订记录：2026-10-01，0.2.1 功能、文档和生产 ZIP 已以 `e17e2b10baebd716b5b03e2ee2d26b46d7e501f9` 推送 GitHub、Gitee；远端提交一致，GitHub Issues、Pages 隐私政策和 ZIP 匿名访问均返回 HTTP 200。
