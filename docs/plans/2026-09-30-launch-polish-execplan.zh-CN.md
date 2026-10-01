@@ -35,7 +35,7 @@
 - [x] (2026-10-01) 公开仓库后的收尾文档补充完成：隐私政策说明 `storage.local` 持久数据、`storage.session` 短期状态和公开 Issue 脱敏边界；商店材料增加 Edge Partner Center 独立手工检查项。处理前远端 `main` 为 `caa577cfb5fccfacb6f967088e69f5addf62cc4f`，最终提交号以本轮推送后的 Git 核对为准。
 - [x] (2026-10-01) 以当前源码重跑测试、类型检查、生产构建、图标验证和 Edge 扩展验收；匿名检查仓库、隐私政策、Issues 与 ZIP 地址均返回 HTTP 200。
 - [x] (2026-10-01) 完成最新三道中文 Gate：Gate 1 通过并确认安装包使用 `/issues/`；Gate 2 对照公开发布材料、隐私边界和双平台清单，确认设计一致，唯一交付条件是提交推送本地修改；Gate 3 通过且确认无权限、存储、网络、核心路径或性能影响。
-- [x] (2026-10-01) 将本轮十个源码、文档和安装包文件以 `b2d4e23` 提交并推送 Gitee `main`；随后以 `a0065ad` 补充最终交接和计划记录。当前本地提交号与远端 `refs/heads/main` 均为 `a0065ad8bf3216e032fa68f62e3073e7c4a8a07a`，工作树干净。
+- [x] (2026-10-01) 将本轮十个源码、文档和安装包文件以 `b2d4e23` 提交并推送 Gitee `main`；随后以文档专用提交补充最终交接和计划记录。远端 `main` 已包含该功能与产物提交，公开 ZIP 哈希已复核，工作树干净。
 
 ## Surprises & Discoveries
 
@@ -68,7 +68,7 @@ Gate 2 找到 `key={locale}` 重挂载丢失业务状态、异步回调和提示
 ## Outcomes & Retrospective
 
 
-免费版 0.2.0 的功能、三道复核、本地自动验证、安装包和 Git 交付均已完成。本轮公开化文档与反馈链接修正随 `b2d4e2395c0b71ddd79d7df497377a00d5ee4fe1` 推送到 Gitee `main`；随后以 `a0065ad8bf3216e032fa68f62e3073e7c4a8a07a` 补齐最终交接和计划记录，当前远端 `main` 与本地一致。远端公开 ZIP 为 90,380 字节，SHA256 `B8D3BEC15556BC324661D34CDCF1134EF3F4DF76184B65449C2B0A6D02AA344D`，与本地一致，工作树干净。此前 `b324edd` 与 `827236b` 仅作为历史提交记录保留。免费版不包含账号、支付、云同步或额外权限。100+ 标签、service worker 被回收后的人工行为和快捷键是否被 Chrome 接受仍属于环境相关的后续手工验收，没有将它们宣称为自动通过；没有配置虚构邮箱或发布商店。
+免费版 0.2.0 的功能、三道复核、本地自动验证、安装包和 Git 交付均已完成。本轮公开化文档与反馈链接修正随 `b2d4e2395c0b71ddd79d7df497377a00d5ee4fe1` 推送到 Gitee `main`；随后以文档专用提交补齐最终交接和计划记录。远端公开 ZIP 为 90,380 字节，SHA256 `B8D3BEC15556BC324661D34CDCF1134EF3F4DF76184B65449C2B0A6D02AA344D`，与本地一致；后续文档提交不改变安装包内容。此前 `b324edd` 与 `827236b` 仅作为历史提交记录保留。免费版不包含账号、支付、云同步或额外权限。100+ 标签、service worker 被回收后的人工行为和快捷键是否被 Chrome 接受仍属于环境相关的后续手工验收，没有将它们宣称为自动通过；没有配置虚构邮箱或发布商店。
 
 ## Context and Orientation
 
@@ -159,4 +159,4 @@ Gate 2 找到 `key={locale}` 重挂载丢失业务状态、异步回调和提示
 
 修订记录：2026-10-01，依据 Gate 1 复审修正 Gitee Issues 尾斜杠地址，更新相关测试和真实扩展检查，并重建 0.2.0 ZIP。新包为 90,380 字节、SHA256 `B8D3BEC15556BC324661D34CDCF1134EF3F4DF76184B65449C2B0A6D02AA344D`，17 个条目与 `dist` 逐项一致。
 
-修订记录：2026-10-01，依据公开仓库收尾的三道独立中文 Gate 更新交付状态。Gate 1、Gate 2、Gate 3 均通过。重新运行 `npm test -- --run`（46 个文件、248 项通过，含被 Vitest 扫描的忽略镜像目录）、`npm exec vitest -- run --dir tests`（23 个文件、124 项通过）、`npm run typecheck`、`npm run build`、`node scripts/verify-icons.mjs dist`、`node scripts/extension-check.mjs`（`errors: []`）、`git diff --check`，并验证 ZIP 17/17 SHA256 一致及四个 Gitee 地址匿名 HTTP 200。功能与安装包提交 `b2d4e2395c0b71ddd79d7df497377a00d5ee4fe1` 已推送，交接与计划记录随后随 `a0065ad8bf3216e032fa68f62e3073e7c4a8a07a` 推送，远端公开 ZIP 哈希与本地一致，工作树干净。
+修订记录：2026-10-01，依据公开仓库收尾的三道独立中文 Gate 更新交付状态。Gate 1、Gate 2、Gate 3 均通过。重新运行 `npm test -- --run`（46 个文件、248 项通过，含被 Vitest 扫描的忽略镜像目录）、`npm exec vitest -- run --dir tests`（23 个文件、124 项通过）、`npm run typecheck`、`npm run build`、`node scripts/verify-icons.mjs dist`、`node scripts/extension-check.mjs`（`errors: []`）、`git diff --check`，并验证 ZIP 17/17 SHA256 一致及四个 Gitee 地址匿名 HTTP 200。功能与安装包提交 `b2d4e2395c0b71ddd79d7df497377a00d5ee4fe1` 已推送，后续文档专用提交已推送，远端公开 ZIP 哈希与本地一致，工作树干净。
