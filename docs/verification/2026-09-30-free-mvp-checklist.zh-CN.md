@@ -5,8 +5,8 @@
 ## 最终修订（2026-10-01）
 
 后续留空命名和并发编号修复已纳入最终版本；当前全量测试为 23 个文件、
-124 项通过。当前 0.2.0 发布包为 90,379 字节，SHA256 为
-`9BA98BC673CCBB4F40A6CDD4F57871760E4F08F0ED94198D094E42337589F701`。
+124 项通过。当前 0.2.0 发布包为 90,380 字节，SHA256 为
+`B8D3BEC15556BC324661D34CDCF1134EF3F4DF76184B65449C2B0A6D02AA344D`。
 下文早期记录中的 118 项、90,101 字节和旧哈希属于历史候选包，不再作为商店
 上传依据。另已使用 Edge Chromium 可执行文件完成同一隔离扩展脚本验收，结果
 为 `errors: []`；这只证明本地运行兼容，不代表 Edge 商店审核通过。
@@ -66,6 +66,6 @@ Chromium Edge 运行时兼容，不代表 Edge Add-ons 商店审核结果。
 
 ## 发布包与隐私
 
-`releases/tabstash-free-mvp-0.2.0.zip` 共 17 个文件、90,379 字节，ZIP 根含 manifest。通过 .NET ZipArchive 逐文件读取并对照 dist 的 SHA256，所有文件一致，无开发依赖、测试、日志或临时 profile。包 SHA256：`9BA98BC673CCBB4F40A6CDD4F57871760E4F08F0ED94198D094E42337589F701`。旧 0.1.0 ZIP 保留。
+`releases/tabstash-free-mvp-0.2.0.zip` 共 17 个文件、90,380 字节，ZIP 根含 manifest。通过 .NET ZipArchive 逐文件读取并对照 dist 的 SHA256，所有文件一致，无开发依赖、测试、日志或临时 profile。包 SHA256：`B8D3BEC15556BC324661D34CDCF1134EF3F4DF76184B65449C2B0A6D02AA344D`。旧 0.1.0 ZIP 保留。
 
 备份不含 Cookie 或网页内容，README 说明网址明文风险；无网络后端或 storage.sync。Gitee 反馈链接不自动附带会话或 URL，未设置虚构邮箱。生产扩展不依赖开发服务器，解压后通过 Chrome 开发者模式加载含 manifest 的目录即可。

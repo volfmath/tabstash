@@ -29,7 +29,7 @@ Tabstash 是一个适用于 Chrome 和 Edge Chromium 的扩展，用于把当前
 ## 反馈和交流
 
 在管理页的“设置”中可以打开公开 Gitee Issue，用于报告问题或提出功能建议：
-`https://gitee.com/moreandmoregames/tabstash/issues`
+`https://gitee.com/moreandmoregames/tabstash/issues/`
 
 当前没有配置反馈邮箱，也不会虚构或自动添加邮箱入口。Issue 链接不会附带会话、标签或网址数据。
 
@@ -61,7 +61,7 @@ JSON 备份包含网址明文和可能敏感的查询参数，请像保存密码
 
 扩展只申请 `storage` 和 `tabs` 权限：`tabs` 用于读取用户明确保存的窗口和标签信息，`storage` 用于保存本地会话和短期任务/预览状态。没有主机权限、内容脚本、网络后端或 `storage.sync`。
 
-公开隐私政策见 [`docs/privacy-policy.md`](docs/privacy-policy.md)；提交商店时使用公开 Gitee 链接：<https://gitee.com/moreandmoregames/tabstash/blob/main/docs/privacy-policy.md>。
+公开隐私政策见 [`docs/privacy-policy.md`](docs/privacy-policy.md)；仓库现为公开项目，商店使用的隐私政策链接为 <https://gitee.com/moreandmoregames/tabstash/blob/main/docs/privacy-policy.md>。用户反馈入口为 <https://gitee.com/moreandmoregames/tabstash/issues/>。
 
 ## 测试
 

@@ -10,12 +10,18 @@
 
 包 SHA256：
 
-`9BA98BC673CCBB4F40A6CDD4F57871760E4F08F0ED94198D094E42337589F701`
+`B8D3BEC15556BC324661D34CDCF1134EF3F4DF76184B65449C2B0A6D02AA344D`
 
 建议先提交 Chrome Web Store，审核结果稳定后再将同一个 ZIP 提交 Edge
 Add-ons。当前已用本机 Edge Chromium 可执行文件加载该包完成隔离验收；这
 证明运行时兼容，但不代表 Edge Add-ons 商店已经接受。不要为两个商店维护
 不同代码或不同版本号。
+
+仓库已改为公开。2026-10-01 通过 Gitee API 核对 `private: false`，隐私政策页面
+匿名访问返回 HTTP 200，发布 ZIP 的公开 raw 地址返回 HTTP 200，且远端文件内容
+与本地提交一致。Gitee 的 `/issues` 页面在部分请求方式下返回 HTTP 405，但浏览器
+页面仍显示 Issue 入口，Issues API 也已启用；商店表单的 Support URL 因此使用稳定
+返回 200 的仓库主页，扩展内仍保留 Issues 作为直接反馈入口。
 
 ## Chrome Web Store
 
@@ -29,7 +35,8 @@ Add-ons。当前已用本机 Edge Chromium 可执行文件加载该包完成隔�
 - 默认语言：`English`
 - 可提供语言：`English`、`Chinese (Simplified)`
 - 单一用途：Save and restore the user's browser tab sessions locally.
-- 支持链接：<https://gitee.com/moreandmoregames/tabstash/issues>
+- 支持链接：<https://gitee.com/moreandmoregames/tabstash>
+- 用户反馈：<https://gitee.com/moreandmoregames/tabstash/issues/>
 - 隐私政策：<https://gitee.com/moreandmoregames/tabstash/blob/main/docs/privacy-policy.md>
 
 ### English listing
@@ -116,6 +123,16 @@ exercised save, restore, backup, language, capacity, and feedback flows, and
 reported `errors: []`. This is a local browser compatibility check; the store
 review decision remains external and must not be claimed in advance.
 
+### Chrome 独立手工检查
+
+Chrome 的运行时验收和商店提交同样需要分别确认：
+
+- [ ] 用发布者账号登录 Chrome Web Store Developer Dashboard，并完成开发者协议和必要的注册步骤。
+- [ ] 上传 `releases/tabstash-free-mvp-0.2.0.zip`，确认版本为 `0.2.0`，包哈希为 `B8D3BEC15556BC324661D34CDCF1134EF3F4DF76184B65449C2B0A6D02AA344D`。
+- [ ] 按 Chrome 表单填写类别、支持链接、反馈链接、隐私政策链接和隐私实践声明；不要只依赖本地浏览器验收结果。
+- [ ] 上传 `docs/release/assets/` 中的英文截图和 `public/icon128.png`，检查商店预览没有裁切或文案溢出。
+- [ ] 保存 Chrome Item ID、审核状态和审核反馈；在审核通过前，不要把扩展描述为已上架 Chrome Web Store。
+
 ## Microsoft Edge Add-ons
 
 入口：<https://partner.microsoft.com/dashboard/microsoftedge/overview>
@@ -125,9 +142,23 @@ review decision remains external and must not be claimed in advance.
 不同，按以下映射填写：
 
 - Product category：`Productivity`
-- Support URL：Gitee Issues
+- Support URL：Gitee repository home
+- Feedback URL：Gitee Issues
 - Privacy policy URL：Gitee `docs/privacy-policy.md`
 - Package：`releases/tabstash-free-mvp-0.2.0.zip`
+
+### Edge 独立手工检查
+
+Edge 的运行时验收和商店提交是两件事，必须在 Partner Center 单独完成：
+
+- [ ] 用发布者账号登录 Edge Partner Center，并完成开发者资料、协议和必要的注册步骤。
+- [ ] 在 Edge Add-ons 提交页面上传同一个 `tabstash-free-mvp-0.2.0.zip`，确认版本仍为 `0.2.0`。
+- [ ] 按 Edge 表单重新填写类别、支持链接、反馈链接、隐私政策链接和权限/数据使用声明；不要只依赖 Chrome 表单的结果。
+- [ ] 上传 `docs/release/assets/` 中的英文截图和 `public/icon128.png`（若表单要求单独图标），检查预览没有裁切或文案溢出。
+- [ ] 提交前核对包哈希为 `B8D3BEC15556BC324661D34CDCF1134EF3F4DF76184B65449C2B0A6D02AA344D`，再由账号持有人完成审核提交。
+- [ ] 保存 Edge Submission ID、审核状态和审核反馈；在审核通过前，不要把扩展描述为已上架 Edge Add-ons。
+
+Edge 的审核结果、Submission ID 和表单字段只能由发布者登录后确认；本地 Edge Chromium 的 `errors: []` 不能替代这些手工检查。
 
 ## 提交前检查
 
@@ -135,7 +166,9 @@ review decision remains external and must not be claimed in advance.
 - [x] 仅申请 `storage` 和 `tabs` 权限。
 - [x] 包根目录包含 `manifest.json`。
 - [x] ZIP 与当前 `dist` 已逐文件 SHA256 核对。
+- [x] Gitee 仓库已公开；隐私政策页面和 ZIP 公开地址匿名访问返回 HTTP 200。
 - [x] 当前工作树使用 Edge Chromium 可执行文件实际加载验收，`errors: []`；这不是商店审核结果。
 - [ ] 以开发者账号登录 Chrome Web Store 并完成开发者协议/一次性注册费用。
 - [ ] 上传 ZIP、图标和截图，填写隐私实践声明。
 - [ ] 由账号持有人完成最终提交审核。
+- [ ] 在 Edge Partner Center 完成上方 Edge 独立手工检查并单独提交审核。

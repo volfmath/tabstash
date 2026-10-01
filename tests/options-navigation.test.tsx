@@ -73,8 +73,8 @@ describe('Options navigation and feedback', () => {
     await mount('#settings')
     const links = Array.from(container.querySelectorAll<HTMLAnchorElement>('main a'))
     expect(links.map((link) => link.href)).toEqual([
-      'https://gitee.com/moreandmoregames/tabstash/issues',
-      'https://gitee.com/moreandmoregames/tabstash/issues',
+      'https://gitee.com/moreandmoregames/tabstash/issues/',
+      'https://gitee.com/moreandmoregames/tabstash/issues/',
       'https://gitee.com/moreandmoregames/tabstash/commits/main',
     ])
     for (const link of links) {

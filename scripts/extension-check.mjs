@@ -188,7 +188,7 @@ context = await chromium.launchPersistentContext(profilePath, {
   await manager.reload()
   assert.equal(await manager.locator('select').inputValue(), 'zh-CN')
   await popup.screenshot({ path: 'artifacts/extension-popup-zh-CN.png' })
-  assert.equal(await manager.locator('a[href="https://gitee.com/moreandmoregames/tabstash/issues"]').count(), 2)
+  assert.equal(await manager.locator('a[href="https://gitee.com/moreandmoregames/tabstash/issues/"]').count(), 2)
   await manager.evaluate(id => chrome.windows.remove(id), secondWindow.id)
 
   const result = {

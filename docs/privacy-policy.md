@@ -16,9 +16,9 @@ Tabstash handles the following information only when the user starts an action:
 
 - When saving a session, it reads the URL and title of tabs in the selected
   current window or selected ordinary windows.
-- It stores session names, tab URLs, tab titles, window structure, language
-  preference, and short-lived save or restore state in the browser's local
-  extension storage.
+- It stores session names, tab URLs, tab titles, window structure, and language
+  preference in `storage.local`. Short-lived save previews, imported backup
+  previews, and restore task state are kept in `storage.session`.
 - When the user exports or imports a JSON backup, the file is read or written
   locally by the browser. It is not uploaded to Tabstash or to a Tabstash
   server.
@@ -41,17 +41,23 @@ tracker. Those pages open only after the user clicks a link; the extension does
 not attach session, tab, or URL data to those links. Gitee's own privacy policy
 applies after the user leaves the extension.
 
+The public issue tracker is not a private support channel. Before opening an
+issue, remove exported backup JSON, cookies, login links, access tokens, session
+names, tab titles, URLs (including sensitive query parameters), and personal
+information visible in screenshots or logs. Share only the smallest
+reproduction details needed to investigate a problem.
+
 ## Retention and deletion
 
-Saved sessions and language preference remain in the browser's persistent local
-extension storage until the user deletes them, clears extension data, or
+Saved sessions and language preference remain in the browser's persistent
+`storage.local` until the user deletes them, clears extension data, or
 uninstalls the extension. The user can export a backup, delete individual
 sessions, or clear the browser's extension data through browser settings.
 Preview tokens and imported backup previews are short-lived and expire after
-their workflow timeout. Restore task summaries are kept temporarily in session
-storage, at most ten entries, so the user can see completion, partial failure,
-or an unconfirmed result; a stale running task is marked unconfirmed rather
-than automatically retried.
+their workflow timeout. Restore task summaries are kept temporarily in
+`storage.session`, at most ten entries, so the user can see completion, partial
+failure, or an unconfirmed result; a stale running task is marked unconfirmed
+rather than automatically retried.
 
 ## Permissions
 
@@ -66,4 +72,4 @@ This policy may be updated when Tabstash's data practices change. The current
 version is always published at this URL. Questions, bug reports, and privacy
 requests can be submitted through the public issue tracker:
 
-<https://gitee.com/moreandmoregames/tabstash/issues>
+<https://gitee.com/moreandmoregames/tabstash/issues/>
