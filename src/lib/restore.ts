@@ -8,7 +8,7 @@ export interface RestoreFailure {
   url: string
   title: string
   message: string
-  code?: 'unsupported-url' | 'browser-open-failed' | 'window-create-failed'
+  code?: 'unsupported-url' | 'browser-open-failed' | 'window-create-failed' | 'task-failed'
 }
 
 export interface RestoreWindowPlan {

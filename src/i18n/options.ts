@@ -37,7 +37,7 @@ export const catalog = {
   languageSystem: { en: 'Follow browser', 'zh-CN': '跟随浏览器' },
   languageEnglish: { en: 'English', 'zh-CN': 'English' },
   languageChinese: { en: '简体中文', 'zh-CN': '简体中文' },
-  languageSaveError: { en: 'Language preference could not be saved: {name}', 'zh-CN': '语言偏好保存失败：{name}' },
+  languageSaveError: { en: 'Language preference could not be saved.', 'zh-CN': '语言偏好保存失败。' },
   feedbackTitle: { en: 'Feedback', 'zh-CN': '反馈' },
   feedbackText: { en: 'Open a public project issue to report a problem or suggest a feature.', 'zh-CN': '通过公开项目 Issue 报告问题或建议功能。' },
   reportProblem: { en: 'Report a problem', 'zh-CN': '报告问题' },

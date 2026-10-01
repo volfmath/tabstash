@@ -7,9 +7,9 @@ import type { RestoreMode, SavedSession, SaveScope } from '../types/session'
 import type { BackgroundMessage, BackgroundResponse } from '../background/messages'
 import { ArrowLeft, ArrowUpRight, Check, Download, FolderOpen, Pencil, RefreshCw, Search, ShieldCheck, Trash2, X } from 'lucide-react'
 import { useI18n, useLocalizedMessage } from '../i18n/react'
-import type { Locale } from '../i18n/core'
+import { localizeAutomaticSessionName, type Locale } from '../i18n/core'
 import { ui } from '../i18n/ui'
-import { localizeFailure, localizeRestoreFailure, LocalizedFailure } from '../i18n/errors'
+import { localizeFailure, localizeRestoreFailure, localizeRestoreFailureTitle, LocalizedFailure } from '../i18n/errors'
 
 interface PendingSave {
   name: string
@@ -58,6 +58,7 @@ function formatCreatedAt(value: string, locale: string): string {
 function SessionItem({ session, onRename, onDelete, onRestore, restoreBusy, compact }: SessionItemProps) {
   const { locale } = useI18n()
   const t = ui(locale)
+  const displayName = localizeAutomaticSessionName(session.name, locale)
   const [editing, setEditing] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [name, setName] = useState(session.name)
@@ -71,7 +72,7 @@ function SessionItem({ session, onRename, onDelete, onRestore, restoreBusy, comp
 
   async function submitRename(event: FormEvent) {
     event.preventDefault()
-    if (!name.trim() || name.trim() === session.name) {
+    if (!name.trim() || name.trim() === displayName) {
       setEditing(false)
       setName(session.name)
       return
@@ -89,7 +90,7 @@ function SessionItem({ session, onRename, onDelete, onRestore, restoreBusy, comp
   }
 
   async function deleteSession() {
-    if (!window.confirm(t('deleteConfirm', { name: session.name }))) return
+    if (!window.confirm(t('deleteConfirm', { name: displayName }))) return
     setBusy(true)
     setActionError('')
     try {
@@ -121,14 +122,14 @@ function SessionItem({ session, onRename, onDelete, onRestore, restoreBusy, comp
             </button>
           </form>
         ) : (
-          <div className="session-title"><FolderOpen size={18} aria-hidden="true" /><h3 title={session.name}>{session.name}</h3></div>
+          <div className="session-title"><FolderOpen size={18} aria-hidden="true" /><h3 title={displayName}>{displayName}</h3></div>
         )}
         {!editing && (
           <div className="session-actions">
             <button className="restore-button" type="button" onClick={() => onRestore(session)} disabled={busy || restoreBusy} title={t('restoreLabel')}>
               <ArrowUpRight size={15} aria-hidden="true" />{t('restore')}
             </button>
-            {!compact && <button className="icon-button" type="button" onClick={() => { setActionError(''); setEditing(true) }} disabled={busy} title={t('rename')} aria-label={t('rename')}>
+            {!compact && <button className="icon-button" type="button" onClick={() => { setActionError(''); setName(displayName); setEditing(true) }} disabled={busy} title={t('rename')} aria-label={t('rename')}>
               <Pencil size={16} aria-hidden="true" />
             </button>
             }
@@ -154,7 +155,7 @@ function SessionItem({ session, onRename, onDelete, onRestore, restoreBusy, comp
               ) : (
                 <ul className="saved-tabs">
                   {window.tabs.map((tab, tabIndex) => {
-                    const hostname = getHostname(tab.url)
+                    const hostname = getHostname(tab.url, t('unknownHost'))
                     const showHost = hostname !== previousHost
                     previousHost = hostname
                     return (
@@ -324,7 +325,7 @@ export default function Popup({ variant = 'popup' }: { variant?: 'popup' | 'mana
         setSessions((current) => sortSessions([response.session, ...current.filter((item) => item.id !== response.session.id)]))
         setPending(null)
         setName('')
-        setNotice((locale) => ui(locale)('saved', { name: response.session.name }))
+        setNotice((locale) => ui(locale)('saved', { name: localizeAutomaticSessionName(response.session.name, locale) }))
       } else if (!response.ok) {
         setError((locale) => localizeFailure(response, locale))
         if (response.code === 'preview-expired') setPending(null)
@@ -474,7 +475,7 @@ export default function Popup({ variant = 'popup' }: { variant?: 'popup' | 'mana
           <div className="section-heading">
             <div>
               <p className="step-label">{t('preview')}</p>
-              <h2>{pending.suggestedName}</h2>
+              <h2>{localizeAutomaticSessionName(pending.suggestedName, locale)}</h2>
             </div>
           </div>
           <p className="preview-summary">{t('previewSummary', { windows: pending.preview.windows.length, tabs: pending.preview.includedTabCount, excluded: pending.preview.excludedTabs.length })}</p>
@@ -485,7 +486,7 @@ export default function Popup({ variant = 'popup' }: { variant?: 'popup' | 'mana
               {pending.preview.excludedTabs.map((tab, index) => (
                 <li key={`${tab.url}-${index}`}>
                   <span>{t(tab.reason === 'unsupported-window' ? 'unsupportedWindow' : tab.reason === 'missing-url' ? 'missingUrl' : 'unsupportedUrl')}</span>
-                  <strong>{tab.title}</strong>
+                  <strong>{tab.title || t('untitled')}</strong>
                   {tab.url && <small>{tab.url}</small>}
                 </li>
               ))}
@@ -508,7 +509,7 @@ export default function Popup({ variant = 'popup' }: { variant?: 'popup' | 'mana
           <div className="section-heading">
             <div>
               <p className="step-label">{t('restoreHeading')}</p>
-              <h2>{restoreTarget.name}</h2>
+              <h2>{localizeAutomaticSessionName(restoreTarget.name, locale)}</h2>
             </div>
           </div>
           <label className="restore-mode-field">
@@ -549,7 +550,7 @@ export default function Popup({ variant = 'popup' }: { variant?: 'popup' | 'mana
             <ul className="restore-failures">
               {restoreTask.failures.map((failure, index) => (
                 <li key={`${failure.url}-${index}`}>
-                  <strong>{failure.title || failure.url || t('untitled')}</strong>
+                  <strong>{localizeRestoreFailureTitle(failure, locale) || failure.url || t('untitled')}</strong>
                   <small>{localizeRestoreFailure(failure, locale)}{failure.url ? ` · ${failure.url}` : ''}</small>
                 </li>
               ))}

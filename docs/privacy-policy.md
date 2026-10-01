@@ -36,9 +36,9 @@ Tabstash does not transmit the handled information to a developer-controlled
 server, third-party analytics service, or advertising network. The extension
 has no host permissions, content scripts, or remote code.
 
-The Settings page contains links to the public Gitee repository and issue
+The Settings page contains links to the public GitHub repository and issue
 tracker. Those pages open only after the user clicks a link; the extension does
-not attach session, tab, or URL data to those links. Gitee's own privacy policy
+not attach session, tab, or URL data to those links. GitHub's own privacy policy
 applies after the user leaves the extension.
 
 The public issue tracker is not a private support channel. Before opening an
@@ -72,4 +72,4 @@ This policy may be updated when Tabstash's data practices change. The current
 version is always published at this URL. Questions, bug reports, and privacy
 requests can be submitted through the public issue tracker:
 
-<https://gitee.com/moreandmoregames/tabstash/issues/>
+<https://github.com/volfmath/tabstash/issues/>

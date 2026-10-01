@@ -65,7 +65,7 @@ describe('localized page entrypoints', () => {
       return { ok: false, code: 'unknown-error', message: 'Fixture error' }
     })
     vi.stubGlobal('chrome', {
-      runtime: { sendMessage, getManifest: () => ({ version: '0.2.0' }) },
+    runtime: { sendMessage, getManifest: () => ({ version: '0.2.1' }) },
       i18n: { getUILanguage: () => 'en-US' },
       storage: {
         local: { get: async () => ({}), set: async () => {} },
@@ -100,12 +100,12 @@ describe('localized page entrypoints', () => {
     expect(sendMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'save-session', previewToken: 'save-token', name: 'Draft preview' }))
   })
 
-  it('keeps a blank preview name stable across a language change and supports an older backend response', async () => {
+  it('localizes a blank preview name after a language change and supports an older backend response', async () => {
     await act(async () => { await import('../src/popup/main') })
     await act(async () => document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
     expect(document.querySelector('.preview-panel h2')?.textContent).toBe('Session 1')
     await switchLanguage('zh-CN')
-    expect(document.querySelector('.preview-panel h2')?.textContent).toBe('Session 1')
+    expect(document.querySelector('.preview-panel h2')?.textContent).toBe('会话 1')
     await act(async () => document.querySelector<HTMLButtonElement>('.preview-panel .primary-button')!.click())
     expect(sendMessage).toHaveBeenCalledWith(expect.objectContaining({
       type: 'save-session',
@@ -113,6 +113,70 @@ describe('localized page entrypoints', () => {
       name: 'Session 1',
       locale: 'en',
     }))
+  })
+
+  it('localizes an automatically generated session name in the session list', async () => {
+    sendMessage.mockImplementation(async ({ type }) => {
+      if (type === 'list-sessions') return { ok: true, sessions: [{ ...session, name: '会话 1' }] }
+      if (type === 'list-restore-tasks') return { ok: true, tasks: [] }
+      return { ok: false, code: 'unknown-error', message: 'Fixture error' }
+    })
+
+    await act(async () => { await import('../src/popup/main') })
+
+    expect(document.querySelector('.session-title h3')?.textContent).toBe('Session 1')
+  })
+
+  it('shows a localized automatic name while editing a session', async () => {
+    sendMessage.mockImplementation(async ({ type }) => {
+      if (type === 'list-sessions') return { ok: true, sessions: [{ ...session, name: '会话 1' }] }
+      if (type === 'list-restore-tasks') return { ok: true, tasks: [] }
+      return { ok: false, code: 'unknown-error', message: 'Fixture error' }
+    })
+
+    window.history.replaceState(null, '', '/#sessions')
+    await act(async () => { await import('../src/options/main') })
+    await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="Rename session"]')!.click())
+
+    expect(document.querySelector<HTMLInputElement>('.rename-form input')?.value).toBe('Session 1')
+  })
+
+  it('localizes an empty excluded-tab label in the English preview', async () => {
+    sendMessage.mockImplementation(async ({ type }) => {
+      if (type === 'list-sessions') return { ok: true, sessions: [session] }
+      if (type === 'list-restore-tasks') return { ok: true, tasks: [] }
+      if (type === 'preview-session') return {
+        ok: true,
+        previewToken: 'excluded-token',
+        preview: { windows: session.windows, includedTabCount: 1, excludedTabs: [{ title: '', reason: 'missing-url' }] },
+      }
+      return { ok: false, code: 'unknown-error', message: 'Fixture error' }
+    })
+
+    await act(async () => { await import('../src/popup/main') })
+    await act(async () => document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+
+    expect(document.querySelector('.excluded-list strong')?.textContent).toBe('Untitled tab')
+  })
+
+  it('updates an automatic preview name when the interface language changes', async () => {
+    sendMessage.mockImplementation(async ({ type }) => {
+      if (type === 'list-sessions') return { ok: true, sessions: [session] }
+      if (type === 'list-restore-tasks') return { ok: true, tasks: [] }
+      if (type === 'preview-session') return {
+        ok: true,
+        suggestedName: 'Session 2',
+        previewToken: 'automatic-name-token',
+        preview: { windows: session.windows, includedTabCount: 1, excludedTabs: [] },
+      }
+      return { ok: false, code: 'unknown-error', message: 'Fixture error' }
+    })
+
+    await act(async () => { await import('../src/popup/main') })
+    await act(async () => document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+    expect(document.querySelector('.preview-panel h2')?.textContent).toBe('Session 2')
+    await switchLanguage('zh-CN')
+    expect(document.querySelector('.preview-panel h2')?.textContent).toBe('会话 2')
   })
 
   it('keeps the unconfirmed restore request ID when the language changes', async () => {

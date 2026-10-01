@@ -51,7 +51,7 @@ function SettingsView() {
             <option value="zh-CN">{t('languageChinese')}</option>
           </select>
         </label>
-        {preferenceError && <p className="feedback feedback--error" role="alert">{t('languageSaveError', { name: preferenceError })}</p>}
+        {preferenceError && <p className="feedback feedback--error" role="alert">{t('languageSaveError')}</p>}
       </section>
       <section className="options-section feedback-section" aria-labelledby="feedback-heading">
         <div className="section-heading">
@@ -61,6 +61,7 @@ function SettingsView() {
           </div>
           <ExternalLink size={20} aria-hidden="true" />
         </div>
+        <p className="preview-summary">{t('feedbackText')}</p>
         <div className="preview-actions">
           <a className="secondary-button" href={SUPPORT_ISSUES_URL} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">
             <ExternalLink size={16} aria-hidden="true" />{t('reportProblem')}

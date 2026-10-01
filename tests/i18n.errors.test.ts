@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { localizeFailure, localizeRestoreFailure } from '../src/i18n/errors'
+import { localizeFailure, localizeRestoreFailure, localizeRestoreFailureTitle } from '../src/i18n/errors'
 import { validateBackup } from '../src/lib/backup'
 
 describe('localized backend failures', () => {
@@ -40,6 +40,32 @@ describe('localized backend failures', () => {
     expect(result).toContain('Unsupported URL protocol')
     expect(result).not.toContain('网址协议不支持')
     expect(failure.url).toBe('chrome://settings')
+  })
+
+  it('localizes system-generated restore failure titles', () => {
+    expect(localizeRestoreFailureTitle({
+      url: '',
+      title: '空窗口',
+      message: 'create failed',
+      code: 'window-create-failed',
+    }, 'en')).toBe('Empty window')
+    expect(localizeRestoreFailureTitle({
+      url: '',
+      title: '恢复任务',
+      message: 'worker stopped',
+      code: 'task-failed',
+    }, 'zh-CN')).toBe('恢复任务')
+  })
+
+  it('localizes restore task errors instead of exposing browser messages', () => {
+    const failure = {
+      url: '',
+      title: '恢复任务',
+      message: '恢复任务意外中断',
+      code: 'task-failed',
+    } as const
+    expect(localizeRestoreFailure(failure, 'en')).toBe('The restore task could not be completed.')
+    expect(localizeRestoreFailure(failure, 'en')).not.toMatch(/[\u4e00-\u9fff]/)
   })
 
   it('does not expose a raw Chinese backend message in English for legacy failures', () => {

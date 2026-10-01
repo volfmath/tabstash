@@ -71,11 +71,12 @@ describe('Options navigation and feedback', () => {
 
   it('offers only public feedback links without session data or an invented email', async () => {
     await mount('#settings')
+    expect(container.textContent).toContain('通过公开项目 Issue 报告问题或建议功能。')
     const links = Array.from(container.querySelectorAll<HTMLAnchorElement>('main a'))
     expect(links.map((link) => link.href)).toEqual([
-      'https://gitee.com/moreandmoregames/tabstash/issues/',
-      'https://gitee.com/moreandmoregames/tabstash/issues/',
-      'https://gitee.com/moreandmoregames/tabstash/commits/main',
+      'https://github.com/volfmath/tabstash/issues/',
+      'https://github.com/volfmath/tabstash/issues/',
+      'https://github.com/volfmath/tabstash/commits/main',
     ])
     for (const link of links) {
       expect(new URL(link.href).search).toBe('')
@@ -105,5 +106,26 @@ describe('Options navigation and feedback', () => {
     expect(set).toHaveBeenCalledWith({ tabstashLanguagePreference: 'en' })
     expect(language.value).toBe('en')
     expect(container.textContent).toContain('Language')
+  })
+
+  it('keeps a language preference storage error in the selected interface language', async () => {
+    const set = vi.fn(async () => { throw new Error('读取本地会话失败') })
+    vi.stubGlobal('chrome', {
+      storage: {
+        local: { get: vi.fn(async () => ({})), set },
+        onChanged: { addListener: vi.fn(), removeListener: vi.fn() },
+      },
+      i18n: { getUILanguage: () => 'en' },
+    })
+    window.history.replaceState(null, '', '/#settings')
+    await act(async () => root.render(<I18nProvider><Options /></I18nProvider>))
+    const language = container.querySelector<HTMLSelectElement>('select')!
+    await act(async () => {
+      language.value = 'zh-CN'
+      language.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    const error = container.querySelector('[role="alert"]')?.textContent ?? ''
+    expect(error).toBe('Language preference could not be saved.')
+    expect(error).not.toMatch(/[\u4e00-\u9fff]/)
   })
 })

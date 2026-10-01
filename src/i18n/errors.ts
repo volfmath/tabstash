@@ -34,6 +34,7 @@ const restoreMessages: Record<string, Record<Locale, string>> = {
   'unsupported-url': { en: 'Unsupported URL protocol.', 'zh-CN': '网址协议不支持。' },
   'browser-open-failed': { en: 'The browser could not open this tab.', 'zh-CN': '浏览器无法打开此标签页。' },
   'window-create-failed': { en: 'The browser could not create a window.', 'zh-CN': '浏览器无法创建窗口。' },
+  'task-failed': { en: 'The restore task could not be completed.', 'zh-CN': '恢复任务意外中断。' },
 }
 
 export function localizeFailure(failure: MessageFailure, locale: Locale): string {
@@ -49,6 +50,12 @@ export function localizeRestoreFailure(failure: RestoreFailure, locale: Locale):
   if (message) return message
   if (locale === 'zh-CN') return '标签页恢复失败。'
   return /[\u4e00-\u9fff]/.test(failure.message) ? 'The tab could not be restored.' : failure.message || 'The tab could not be restored.'
+}
+
+export function localizeRestoreFailureTitle(failure: RestoreFailure, locale: Locale): string {
+  if (failure.code === 'window-create-failed') return locale === 'zh-CN' ? '空窗口' : 'Empty window'
+  if (failure.code === 'task-failed') return locale === 'zh-CN' ? '恢复任务' : 'Restore task'
+  return failure.title
 }
 
 function localizeBackupDetail(detail: BackupValidationDetail, locale: Locale): string {

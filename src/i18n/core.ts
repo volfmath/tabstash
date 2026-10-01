@@ -32,6 +32,12 @@ export function normalizeLocale(language: string | undefined): Locale {
   return language?.trim().toLowerCase().startsWith('zh') ? 'zh-CN' : 'en'
 }
 
+export function localizeAutomaticSessionName(name: string, locale: Locale): string {
+  const match = name.match(/^(?:会话|Session) (\d+)$/i)
+  if (!match) return name
+  return `${locale === 'en' ? 'Session' : '会话'} ${match[1]}`
+}
+
 export function isLanguagePreference(value: unknown): value is LanguagePreference {
   return value === 'system' || value === 'en' || value === 'zh-CN'
 }

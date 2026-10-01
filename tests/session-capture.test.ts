@@ -76,6 +76,18 @@ describe('captureSession', () => {
     })
   })
 
+  it('leaves an empty excluded title for the localized UI to label', async () => {
+    const api = makeApi()
+    vi.mocked(api.getCurrent).mockResolvedValue({
+      type: 'normal',
+      tabs: [{}],
+    })
+
+    await expect(captureSession('current-window', api)).resolves.toMatchObject({
+      excludedTabs: [{ title: '', reason: 'missing-url' }],
+    })
+  })
+
   it('captures a large tab set in one browser read while preserving order', async () => {
     const api = makeApi()
     const tabs = Array.from({ length: 120 }, (_, index) => ({

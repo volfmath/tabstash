@@ -34,7 +34,7 @@ export interface CapturedSession {
 function captureWindow(browserWindow: BrowserWindow, excludedTabs: ExcludedTab[]): SavedWindow {
   const tabs: SavedTab[] = []
   for (const tab of browserWindow.tabs ?? []) {
-    const title = tab.title?.trim() || tab.url || '未命名标签页'
+    const title = tab.title?.trim() || tab.url || ''
     if (!tab.url) {
       excludedTabs.push({ title, reason: 'missing-url' })
       continue
@@ -50,7 +50,7 @@ function captureWindow(browserWindow: BrowserWindow, excludedTabs: ExcludedTab[]
 
 function reportExcludedWindow(browserWindow: BrowserWindow, excludedTabs: ExcludedTab[]): void {
   for (const tab of browserWindow.tabs ?? []) {
-    const title = tab.title?.trim() || tab.url || '未命名标签页'
+    const title = tab.title?.trim() || tab.url || ''
     excludedTabs.push({ url: tab.url, title, reason: 'unsupported-window' })
   }
 }

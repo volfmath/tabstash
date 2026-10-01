@@ -15,7 +15,7 @@ export function isRestorableUrl(value: unknown): value is string {
   return parsed !== null && RESTORABLE_PROTOCOLS.has(parsed.protocol) && parsed.hostname !== ''
 }
 
-export function getHostname(value: unknown): string {
+export function getHostname(value: unknown, fallback = '未知主机'): string {
   const parsed = parseUrl(value)
-  return parsed?.hostname.toLowerCase() || '未知主机'
+  return parsed?.hostname.toLowerCase() || fallback
 }

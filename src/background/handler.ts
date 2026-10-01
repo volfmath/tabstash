@@ -402,6 +402,7 @@ async function startRestore(
       url: '',
       title: '恢复任务',
       message: error instanceof Error ? error.message : '恢复任务意外中断',
+      code: 'task-failed',
     }]
     try {
       await dependencies.restoreTaskStore?.save(task)

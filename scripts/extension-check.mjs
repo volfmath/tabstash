@@ -154,12 +154,38 @@ context = await chromium.launchPersistentContext(profilePath, {
   const backup = JSON.parse(backupBytes.toString())
   assert.equal(backup.sessions.length, 2)
   await manager.locator('nav a[href="#sessions"]').click()
+  const firstSession = backup.sessions[0]
+  const firstItem = manager.locator('.session-item').filter({ has: manager.getByRole('heading', { name: firstSession.name, exact: true }) })
+  let englishDeletePrompt = ''
+  manager.once('dialog', async dialog => {
+    englishDeletePrompt = dialog.message()
+    await dialog.dismiss()
+  })
+  await firstItem.getByRole('button', { name: 'Delete session', exact: true }).click()
+  assert.equal(englishDeletePrompt, `Delete “${firstSession.name}”?`)
+  await firstItem.waitFor({ state: 'attached' })
+  await manager.evaluate(() => chrome.storage.local.set({ tabstashLanguagePreference: 'zh-CN' }))
+  await manager.getByRole('button', { name: '删除会话', exact: true }).first().waitFor()
+  let chineseDeletePrompt = ''
+  manager.once('dialog', async dialog => {
+    chineseDeletePrompt = dialog.message()
+    await dialog.accept()
+  })
+  await firstItem.getByRole('button', { name: '删除会话', exact: true }).click()
+  assert.equal(chineseDeletePrompt, `确定删除“${firstSession.name}”吗？`)
+  await firstItem.waitFor({ state: 'detached' })
   for (const session of backup.sessions) {
+    if (session.id === firstSession.id) continue
     const item = manager.locator('.session-item').filter({ has: manager.getByRole('heading', { name: session.name, exact: true }) })
-    manager.once('dialog', dialog => dialog.accept())
-    await item.getByRole('button', { name: 'Delete session', exact: true }).click()
+    manager.once('dialog', async dialog => {
+      assert.equal(dialog.message(), `确定删除“${session.name}”吗？`)
+      await dialog.accept()
+    })
+    await item.getByRole('button', { name: '删除会话', exact: true }).click()
     await item.waitFor({ state: 'detached' })
   }
+  await manager.evaluate(() => chrome.storage.local.set({ tabstashLanguagePreference: 'en' }))
+  await popup.getByRole('button', { name: 'Preview & save', exact: true }).waitFor()
   assert.equal((await success({ type: 'list-sessions' })).sessions.length, 0)
   await manager.locator('nav a[href="#backup"]').click()
   await manager.locator('input[type="file"]').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: backupBytes })
@@ -188,7 +214,7 @@ context = await chromium.launchPersistentContext(profilePath, {
   await manager.reload()
   assert.equal(await manager.locator('select').inputValue(), 'zh-CN')
   await popup.screenshot({ path: 'artifacts/extension-popup-zh-CN.png' })
-  assert.equal(await manager.locator('a[href="https://gitee.com/moreandmoregames/tabstash/issues/"]').count(), 2)
+  assert.equal(await manager.locator('a[href="https://github.com/volfmath/tabstash/issues/"]').count(), 2)
   await manager.evaluate(id => chrome.windows.remove(id), secondWindow.id)
 
   const result = {
@@ -200,7 +226,7 @@ context = await chromium.launchPersistentContext(profilePath, {
   }
   console.log(JSON.stringify(result, null, 2))
   assert.deepEqual(errors, [])
-  assert.ok(pages.every(page => page.version === '0.2.0' && !page.overflowX))
+  assert.ok(pages.every(page => page.version === '0.2.1' && !page.overflowX))
 } finally {
   await context?.close()
   const tempRoot = path.resolve(os.tmpdir())

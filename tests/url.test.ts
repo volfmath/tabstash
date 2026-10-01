@@ -23,4 +23,8 @@ describe('getHostname', () => {
   it('returns a stable fallback for malformed URLs', () => {
     expect(getHostname('not a URL')).toBe('未知主机')
   })
+
+  it('accepts a localized fallback for malformed URLs', () => {
+    expect(getHostname('not a URL', 'Unknown host')).toBe('Unknown host')
+  })
 })

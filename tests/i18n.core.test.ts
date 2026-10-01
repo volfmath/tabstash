@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createTranslator, resolveLocale, type TranslationCatalog } from '../src/i18n/core'
+import { createTranslator, localizeAutomaticSessionName, resolveLocale, type TranslationCatalog } from '../src/i18n/core'
 
 const catalog = {
   greeting: { en: 'Hello, {name}!', 'zh-CN': '你好，{name}！' },
@@ -19,5 +19,11 @@ describe('i18n core', () => {
     expect(resolveLocale('system', 'zh-TW')).toBe('zh-CN')
     expect(resolveLocale('system', 'fr-FR')).toBe('en')
     expect(resolveLocale('en', 'zh-CN')).toBe('en')
+  })
+
+  it('translates generated session names without changing user-entered names', () => {
+    expect(localizeAutomaticSessionName('会话 1', 'en')).toBe('Session 1')
+    expect(localizeAutomaticSessionName('Session 2', 'zh-CN')).toBe('会话 2')
+    expect(localizeAutomaticSessionName('项目研究', 'en')).toBe('项目研究')
   })
 })

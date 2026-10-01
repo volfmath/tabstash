@@ -18,7 +18,7 @@ async function capture(locale, name, route, viewport, count, preview = false) {
     }))
     globalThis.chrome = {
       runtime: {
-        getManifest: () => ({ version: '0.2.0' }),
+        getManifest: () => ({ version: '0.2.1' }),
         openOptionsPage: () => {},
         getURL: (path) => new URL(`/${path}`, location.origin).href,
         sendMessage: async ({ type }) => {

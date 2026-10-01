@@ -35,6 +35,7 @@ const catalog = {
   viewTabs: { en: 'View tabs', 'zh-CN': '查看标签' },
   window: { en: 'Window {number}', 'zh-CN': '窗口 {number}' },
   emptyWindow: { en: 'Empty window', 'zh-CN': '空窗口' },
+  unknownHost: { en: 'Unknown host', 'zh-CN': '未知主机' },
   restoreHeading: { en: 'Restore session', 'zh-CN': '恢复会话' },
   restoreMode: { en: 'Window layout', 'zh-CN': '窗口布局' },
   preserve: { en: 'Keep separate windows', 'zh-CN': '保留窗口结构' },
