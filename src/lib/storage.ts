@@ -155,7 +155,7 @@ export class SessionStore {
     return value === undefined ? emptyState() : validateStoredState(value)
   }
 
-  async addSession(session: SavedSession): Promise<StoredState> {
+  async addSession(session: SavedSession, automaticNamePrefix?: string): Promise<StoredState> {
     return this.enqueue(async () => {
       const current = await this.readState()
       if (current.sessions.length >= MAX_SESSIONS) throw new StorageLimitError()
@@ -163,9 +163,11 @@ export class SessionStore {
         throw new StorageValidationError('本地会话数据包含重复 ID')
       }
 
+      const requestedName = session.name.trim()
+      const name = requestedName || (automaticNamePrefix ? nextAutomaticName(current.sessions, automaticNamePrefix) : requestedName)
       const candidate: StoredState = {
         schemaVersion: SCHEMA_VERSION,
-        sessions: [...current.sessions, { ...session, name: normalizeName(session.name) }],
+        sessions: [...current.sessions, { ...session, name: normalizeName(name) }],
       }
       if (session.windows.every((window) => window.tabs.length === 0)) {
         throw new StorageValidationError('会话必须至少包含一个可恢复标签页')
@@ -250,6 +252,13 @@ export class SessionStore {
     )
     return task
   }
+}
+
+function nextAutomaticName(sessions: SavedSession[], prefix: string): string {
+  const usedNames = new Set(sessions.map((session) => session.name.trim().toLocaleLowerCase()))
+  let index = 1
+  while (usedNames.has(`${prefix} ${index}`.toLocaleLowerCase())) index += 1
+  return `${prefix} ${index}`
 }
 
 export function createChromeStorage(): StorageLike {

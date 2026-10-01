@@ -2,6 +2,7 @@
 import { act } from 'react'
 import type { Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { BackgroundResponse } from '../src/background/messages'
 
 const { roots } = vi.hoisted(() => ({ roots: [] as Root[] }))
 vi.mock('react-dom/client', async (importOriginal) => {
@@ -22,6 +23,13 @@ const session = {
 }
 const listeners = new Set<(changes: Record<string, chrome.storage.StorageChange>, area: string) => void>()
 const sendMessage = vi.fn()
+
+const legacyPreviewResponse: BackgroundResponse = {
+  ok: true,
+  previewToken: 'legacy-preview',
+  preview: { windows: session.windows, includedTabCount: 1, excludedTabs: [] },
+}
+void legacyPreviewResponse
 
 async function switchLanguage(locale: 'en' | 'zh-CN') {
   await act(async () => {
@@ -90,6 +98,21 @@ describe('localized page entrypoints', () => {
     expect(document.querySelector('.preview-panel h2')?.textContent).toBe('Draft preview')
     await act(async () => document.querySelector<HTMLButtonElement>('.preview-panel .primary-button')!.click())
     expect(sendMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'save-session', previewToken: 'save-token', name: 'Draft preview' }))
+  })
+
+  it('keeps a blank preview name stable across a language change and supports an older backend response', async () => {
+    await act(async () => { await import('../src/popup/main') })
+    await act(async () => document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+    expect(document.querySelector('.preview-panel h2')?.textContent).toBe('Session 1')
+    await switchLanguage('zh-CN')
+    expect(document.querySelector('.preview-panel h2')?.textContent).toBe('Session 1')
+    await act(async () => document.querySelector<HTMLButtonElement>('.preview-panel .primary-button')!.click())
+    expect(sendMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'save-session',
+      previewToken: 'save-token',
+      name: 'Session 1',
+      locale: 'en',
+    }))
   })
 
   it('keeps the unconfirmed restore request ID when the language changes', async () => {

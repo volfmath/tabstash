@@ -20,6 +20,7 @@ import {
   type StorageLike,
 } from '../lib/storage'
 import type { SavedSession } from '../types/session'
+import type { Locale } from '../i18n/core'
 import {
   type BackgroundMessage,
   type BackgroundResponse,
@@ -220,7 +221,7 @@ const defaultBackupPreviewCache = new MemoryBackupPreviewCache()
 
 export interface SessionStoreLike {
   loadState(): Promise<{ sessions: SavedSession[] }>
-  addSession(session: SavedSession): Promise<{ sessions: SavedSession[] }>
+  addSession(session: SavedSession, automaticNamePrefix?: string): Promise<{ sessions: SavedSession[] }>
   importSessions?(sessions: SavedSession[]): Promise<{ addedSessionCount: number; skippedSessionCount: number }>
   renameSession(id: string, name: string): Promise<unknown>
   deleteSession(id: string): Promise<unknown>
@@ -272,7 +273,7 @@ export async function handleMessage(
       case 'save-session':
         return await saveSession(message, dependencies)
       case 'preview-session':
-        return await previewSession(message.scope, dependencies)
+        return await previewSession(message, dependencies)
       case 'list-sessions':
         return await listSessions(dependencies)
       case 'rename-session':
@@ -426,8 +427,7 @@ async function saveSession(
   dependencies: BackgroundDependencies,
 ): Promise<SaveSessionSuccess | MessageFailure> {
   const previewCache = dependencies.previewCache ?? defaultPreviewCache
-  const normalizedName = message.name.trim()
-  if (!normalizedName) return toFailure(new InvalidSessionNameError())
+  const requestedName = message.name.trim()
 
   const claimedToken = message.confirm ? message.previewToken : undefined
   const captured = message.confirm
@@ -470,13 +470,16 @@ async function saveSession(
 
   const session: SavedSession = {
     id: dependencies.createId(),
-    name: normalizedName,
+    name: requestedName,
     createdAt: dependencies.now().toISOString(),
     windows: captured.windows,
   }
   let persisted: { sessions: SavedSession[] }
   try {
-    persisted = await dependencies.store.addSession(session)
+    persisted = await dependencies.store.addSession(
+      session,
+      requestedName ? undefined : automaticNamePrefix(message.locale),
+    )
   } catch (error) {
     if (claimedToken) {
       try {
@@ -504,11 +507,29 @@ async function saveSession(
   }
 }
 
+async function resolveSessionName(name: string, store: BackgroundDependencies['store'], locale: Locale = 'zh-CN'): Promise<string> {
+  const normalizedName = name.trim()
+  if (normalizedName) return normalizedName
+  const { sessions } = await store.loadState()
+  return nextAutomaticName(sessions, automaticNamePrefix(locale))
+}
+
+function automaticNamePrefix(locale: Locale = 'zh-CN'): string {
+  return locale === 'en' ? 'Session' : '会话'
+}
+
+function nextAutomaticName(sessions: SavedSession[], prefix: string): string {
+  const usedNames = new Set(sessions.map((session) => session.name.trim().toLocaleLowerCase()))
+  let index = 1
+  while (usedNames.has(`${prefix} ${index}`.toLocaleLowerCase())) index += 1
+  return `${prefix} ${index}`
+}
+
 async function previewSession(
-  scope: Extract<BackgroundMessage, { type: 'preview-session' }>['scope'],
+  message: Extract<BackgroundMessage, { type: 'preview-session' }>,
   dependencies: BackgroundDependencies,
 ): Promise<PreviewSessionSuccess | MessageFailure> {
-  const preview = await captureSession(scope, dependencies.windowsApi)
+  const preview = await captureSession(message.scope, dependencies.windowsApi)
   if (preview.includedTabCount === 0) {
     return {
       ok: false,
@@ -517,8 +538,9 @@ async function previewSession(
       excludedTabs: preview.excludedTabs,
     }
   }
-  const previewToken = await (dependencies.previewCache ?? defaultPreviewCache).put(preview, scope)
-  return { ok: true, preview, previewToken }
+  const suggestedName = await resolveSessionName(message.name ?? '', dependencies.store, message.locale)
+  const previewToken = await (dependencies.previewCache ?? defaultPreviewCache).put(preview, message.scope)
+  return { ok: true, preview, previewToken, suggestedName }
 }
 
 async function listSessions(dependencies: BackgroundDependencies): Promise<ListSessionsSuccess> {

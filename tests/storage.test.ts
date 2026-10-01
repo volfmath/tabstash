@@ -113,6 +113,19 @@ describe('SessionStore', () => {
     expect(state.sessions.map((session) => session.id)).toEqual([makeSession('one').id, makeSession('two').id])
   })
 
+  it('assigns distinct automatic names inside the serialized write', async () => {
+    const storage = new FakeStorage()
+    const store = new SessionStore(storage)
+
+    await Promise.all([
+      store.addSession(makeSession('one', ''), '会话'),
+      store.addSession(makeSession('two', ''), '会话'),
+    ])
+
+    const state = await store.loadState()
+    expect(state.sessions.map((session) => session.name)).toEqual(['会话 1', '会话 2'])
+  })
+
   it('maps a failed write and leaves the previous state readable', async () => {
     const storage = new FakeStorage()
     const store = new SessionStore(storage)

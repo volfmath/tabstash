@@ -3,10 +3,11 @@ import type { RestoreTask, RestoreResult } from '../lib/restore'
 import type { BackupDocument, BackupValidation, BackupValidationDetail } from '../lib/backup'
 import type { SavedSession, SaveScope } from '../types/session'
 import type { RestoreMode } from '../types/session'
+import type { Locale } from '../i18n/core'
 
 export type BackgroundMessage =
-  | { type: 'save-session'; name: string; scope: SaveScope; confirm?: boolean; previewToken?: string }
-  | { type: 'preview-session'; scope: SaveScope }
+  | { type: 'save-session'; name: string; scope: SaveScope; locale?: Locale; confirm?: boolean; previewToken?: string }
+  | { type: 'preview-session'; name?: string; scope: SaveScope; locale?: Locale }
   | { type: 'list-sessions' }
   | { type: 'rename-session'; id: string; name: string }
   | { type: 'delete-session'; id: string }
@@ -28,6 +29,7 @@ export interface PreviewSessionSuccess {
   ok: true
   preview: CapturedSession
   previewToken: string
+  suggestedName?: string
 }
 
 export interface MessageSuccess {
@@ -120,11 +122,16 @@ export function isBackgroundMessage(value: unknown): value is BackgroundMessage 
       return (
         typeof value.name === 'string' &&
         (value.scope === 'current-window' || value.scope === 'all-windows') &&
+        (value.locale === undefined || isLocale(value.locale)) &&
         (value.confirm === undefined || typeof value.confirm === 'boolean') &&
         (value.previewToken === undefined || typeof value.previewToken === 'string')
       )
     case 'preview-session':
-      return value.scope === 'current-window' || value.scope === 'all-windows'
+      return (
+        (value.name === undefined || typeof value.name === 'string') &&
+        (value.locale === undefined || isLocale(value.locale)) &&
+        (value.scope === 'current-window' || value.scope === 'all-windows')
+      )
     case 'list-sessions':
       return true
     case 'rename-session':
@@ -150,6 +157,10 @@ export function isBackgroundMessage(value: unknown): value is BackgroundMessage 
 
 function isRestoreMode(value: unknown): value is RestoreMode {
   return value === 'preserve-windows' || value === 'merge-window'
+}
+
+function isLocale(value: unknown): value is Locale {
+  return value === 'en' || value === 'zh-CN'
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

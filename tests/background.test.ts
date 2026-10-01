@@ -9,8 +9,16 @@ function makeStore(initial: StoredState = { schemaVersion: 1, sessions: [] }) {
   let state = initial
   return {
     loadState: vi.fn(async () => state),
-    addSession: vi.fn(async (session: SavedSession) => {
-      state = { ...state, sessions: [...state.sessions, session] }
+    addSession: vi.fn(async (session: SavedSession, automaticNamePrefix?: string) => {
+      const requestedName = session.name.trim()
+      const usedNames = new Set(state.sessions.map((candidate) => candidate.name.trim().toLocaleLowerCase()))
+      let index = 1
+      while (automaticNamePrefix && usedNames.has(`${automaticNamePrefix} ${index}`.toLocaleLowerCase())) index += 1
+      const savedSession = {
+        ...session,
+        name: requestedName || (automaticNamePrefix ? `${automaticNamePrefix} ${index}` : requestedName),
+      }
+      state = { ...state, sessions: [...state.sessions, savedSession] }
       return state
     }),
     importSessions: vi.fn(async (sessions: SavedSession[]) => {
@@ -70,6 +78,33 @@ describe('handleMessage', () => {
     await expect(
       handleMessage({ type: 'save-session', name: '  工作  ', scope: 'current-window' }, dependencies),
     ).resolves.toMatchObject({ ok: true, session: { name: '工作' } })
+  })
+
+  it('assigns the first available ordered name when the requested name is blank', async () => {
+    const dependencies = makeDependencies()
+    dependencies.store = makeStore({
+      schemaVersion: 1,
+      sessions: [
+        { id: 'old-1', name: '会话 1', createdAt: '2026-09-29T00:00:00.000Z', windows: [] },
+        { id: 'old-2', name: '会话 3', createdAt: '2026-09-28T00:00:00.000Z', windows: [] },
+      ],
+    })
+
+    await expect(
+      handleMessage({ type: 'save-session', name: '   ', scope: 'current-window' }, dependencies),
+    ).resolves.toMatchObject({ ok: true, session: { name: '会话 2' } })
+    expect(dependencies.store.addSession).toHaveBeenCalledWith(
+      expect.objectContaining({ name: '' }),
+      '会话',
+    )
+  })
+
+  it('returns a localized automatic name for a blank save preview', async () => {
+    const dependencies = makeDependencies()
+
+    await expect(
+      handleMessage({ type: 'preview-session', name: '', locale: 'en', scope: 'current-window' }, dependencies),
+    ).resolves.toMatchObject({ ok: true, suggestedName: 'Session 1' })
   })
 
   it('rejects a capture with no restorable tabs without writing a session', async () => {

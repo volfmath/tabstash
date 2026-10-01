@@ -138,4 +138,34 @@ describe('Popup restore lifecycle', () => {
     expect(container.querySelector('.save-form')).not.toBeNull()
     expect(container.querySelector('.session-list')).not.toBeNull()
   })
+
+  it('allows a blank name and sends it for automatic naming', async () => {
+    sendMessage.mockImplementation(async (message: BackgroundMessage) => {
+      if (message.type === 'list-sessions') return { ok: true, sessions: [session] }
+      if (message.type === 'list-restore-tasks') return { ok: true, tasks: [] }
+      if (message.type === 'preview-session') return {
+        ok: true, suggestedName: '会话 2', previewToken: 'preview-blank', preview: { windows: session.windows, includedTabCount: 1, excludedTabs: [] },
+      }
+    })
+    await mount()
+    await act(async () => container.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+    expect(container.querySelector('.preview-panel')).not.toBeNull()
+    expect(container.querySelector('.preview-panel h2')?.textContent).toBe('会话 2')
+    expect(sendMessage).toHaveBeenCalledWith({ type: 'preview-session', name: '', locale: 'zh-CN', scope: 'current-window' })
+  })
+
+  it('keeps the blank name for a current backend so naming stays atomic', async () => {
+    sendMessage.mockImplementation(async (message: BackgroundMessage) => {
+      if (message.type === 'list-sessions') return { ok: true, sessions: [session] }
+      if (message.type === 'list-restore-tasks') return { ok: true, tasks: [] }
+      if (message.type === 'preview-session') return {
+        ok: true, suggestedName: '会话 2', previewToken: 'preview-blank', preview: { windows: session.windows, includedTabCount: 1, excludedTabs: [] },
+      }
+      if (message.type === 'save-session') return { ok: true, session: { ...session, name: '会话 2' }, includedTabCount: 1, excludedTabs: [] }
+    })
+    await mount()
+    await act(async () => container.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+    await act(async () => Array.from(container.querySelectorAll('button')).find(button => button.textContent?.includes('确认保存'))!.click())
+    expect(sendMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'save-session', name: '', locale: 'zh-CN' }))
+  })
 })

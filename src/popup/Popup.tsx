@@ -7,11 +7,15 @@ import type { RestoreMode, SavedSession, SaveScope } from '../types/session'
 import type { BackgroundMessage, BackgroundResponse } from '../background/messages'
 import { ArrowLeft, ArrowUpRight, Check, Download, FolderOpen, Pencil, RefreshCw, Search, ShieldCheck, Trash2, X } from 'lucide-react'
 import { useI18n, useLocalizedMessage } from '../i18n/react'
+import type { Locale } from '../i18n/core'
 import { ui } from '../i18n/ui'
 import { localizeFailure, localizeRestoreFailure, LocalizedFailure } from '../i18n/errors'
 
 interface PendingSave {
   name: string
+  suggestedName: string
+  automaticNameSupported: boolean
+  locale: Locale
   scope: SaveScope
   preview: CapturedSession
   previewToken: string
@@ -36,6 +40,10 @@ function sortSessions(sessions: SavedSession[]): SavedSession[] {
 
 function countTabs(session: SavedSession): number {
   return session.windows.reduce((total, window) => total + window.tabs.length, 0)
+}
+
+function fallbackSuggestedName(locale: Locale): string {
+  return locale === 'en' ? 'Session 1' : '会话 1'
 }
 
 function formatCreatedAt(value: string, locale: string): string {
@@ -267,18 +275,23 @@ export default function Popup({ variant = 'popup' }: { variant?: 'popup' | 'mana
 
   async function previewSave(event: FormEvent) {
     event.preventDefault()
-    if (!name.trim()) {
-      setError((locale) => ui(locale)('enterName'))
-      return
-    }
     setBusy(true)
     setError('')
     setNotice('')
     try {
-      const response = await sendBackground({ type: 'preview-session', scope })
+      const requestedName = name.trim()
+      const response = await sendBackground({ type: 'preview-session', name: requestedName, locale, scope })
       if (response.ok && 'preview' in response) {
         setNotice('')
-        setPending({ name: name.trim(), scope, preview: response.preview, previewToken: response.previewToken })
+        setPending({
+          name: requestedName,
+          suggestedName: response.suggestedName ?? (requestedName || fallbackSuggestedName(locale)),
+          automaticNameSupported: response.suggestedName !== undefined,
+          locale,
+          scope,
+          preview: response.preview,
+          previewToken: response.previewToken,
+        })
       } else if (!response.ok) {
         setError((locale) => localizeFailure(response, locale))
         if (response.code === 'preview-expired') setPending(null)
@@ -299,7 +312,8 @@ export default function Popup({ variant = 'popup' }: { variant?: 'popup' | 'mana
     try {
       const response = await sendBackground({
         type: 'save-session',
-        name: pending.name,
+        name: pending.name || (pending.automaticNameSupported ? '' : pending.suggestedName),
+        locale: pending.locale,
         scope: pending.scope,
         confirm: true,
         previewToken: pending.previewToken,
@@ -460,7 +474,7 @@ export default function Popup({ variant = 'popup' }: { variant?: 'popup' | 'mana
           <div className="section-heading">
             <div>
               <p className="step-label">{t('preview')}</p>
-              <h2>{pending.name}</h2>
+              <h2>{pending.suggestedName}</h2>
             </div>
           </div>
           <p className="preview-summary">{t('previewSummary', { windows: pending.preview.windows.length, tabs: pending.preview.includedTabCount, excluded: pending.preview.excludedTabs.length })}</p>

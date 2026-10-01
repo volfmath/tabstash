@@ -79,16 +79,22 @@ context = await chromium.launchPersistentContext(profilePath, {
   console.log('Check: current/all-window capture')
   const secondWindow = await manager.evaluate(() => chrome.windows.create({ url: 'https://example.test/two', focused: false }))
 
-  async function saveSession(name, scope) {
+  async function saveSession(name, scope, expectedName = name) {
     await popup.locator('.save-form input').fill(name)
     await popup.locator('.save-form select').selectOption(scope)
     await popup.getByRole('button', { name: 'Preview & save', exact: true }).click()
     await popup.locator('.preview-panel').waitFor()
     assert.ok(await popup.locator('.excluded-details').count(), 'extension pages must be excluded')
     await popup.getByRole('button', { name: 'Confirm save', exact: true }).click()
-    await popup.locator('.session-item h3').filter({ hasText: name }).waitFor()
+    await popup.getByRole('heading', { name: expectedName, exact: true }).waitFor()
   }
   await popup.bringToFront()
+  await saveSession('', 'current-window', 'Session 1')
+  const automaticSession = (await success({ type: 'list-sessions' })).sessions.find(item => item.name === 'Session 1')
+  assert.ok(automaticSession, 'blank names should use the first available English session number')
+  await success({ type: 'delete-session', id: automaticSession.id })
+  await popup.waitForFunction(() => !Array.from(document.querySelectorAll('.session-item h3')).some(element => element.textContent === 'Session 1'))
+  console.log('Blank-name automatic numbering passed')
   await saveSession('Current fixture', 'current-window')
   console.log('Current-window save passed')
   await saveSession('All windows fixture', 'all-windows')
@@ -189,7 +195,7 @@ context = await chromium.launchPersistentContext(profilePath, {
     extensionId,
     serviceWorker: serviceWorker.url(),
     pages,
-    checks: ['persistent cross-page language', 'current/all-window save with exclusions', 'rename and cross-page refresh', 'manager search and confirmed deletion', 'preserve/merge restore without modifying original windows', 'real backup download and reimport', 'five-session UI and backend limit', 'public feedback links'],
+    checks: ['persistent cross-page language', 'blank-name automatic numbering', 'current/all-window save with exclusions', 'rename and cross-page refresh', 'manager search and confirmed deletion', 'preserve/merge restore without modifying original windows', 'real backup download and reimport', 'five-session UI and backend limit', 'public feedback links'],
     errors,
   }
   console.log(JSON.stringify(result, null, 2))
